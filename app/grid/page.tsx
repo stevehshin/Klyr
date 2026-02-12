@@ -18,7 +18,10 @@ export default async function GridPage({
   // Fetch user and all their grids
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      isAdmin: true,
       grids: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -112,6 +115,7 @@ export default async function GridPage({
       currentGrid={currentGrid}
       userId={user.id}
       userEmail={user.email}
+      userIsAdmin={user.isAdmin}
     />
   );
 }

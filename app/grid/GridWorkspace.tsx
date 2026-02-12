@@ -66,6 +66,7 @@ interface GridWorkspaceProps {
   } | null;
   userId: string;
   userEmail: string;
+  userIsAdmin?: boolean;
 }
 
 export function GridWorkspace({
@@ -73,6 +74,7 @@ export function GridWorkspace({
   currentGrid,
   userId,
   userEmail,
+  userIsAdmin = false,
 }: GridWorkspaceProps) {
   const router = useRouter();
   const [grids, setGrids] = useState<GridInfo[]>(initialGrids);
@@ -499,6 +501,7 @@ export function GridWorkspace({
             setShowSettings(false);
             setShowThemeCustomizer(true);
           }}
+          userIsAdmin={userIsAdmin}
         />
       )}
       {showCreateChannelModal && (
