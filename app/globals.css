@@ -45,6 +45,16 @@ body {
   background: var(--background);
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
+  /* Safe area for notched devices (when viewport-fit: cover) */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Improve touch targets and reduce accidental zoom on inputs (iOS) */
+@media (pointer: coarse) {
+  input, select, textarea, button {
+    font-size: max(16px, 1em);
+  }
 }
 
 /* Apply theme variables to components */
@@ -333,6 +343,20 @@ html, body {
 
 .animate-fade-in {
   animation: fade-in var(--motion-duration) var(--motion-ease);
+}
+
+/* Mobile sidebar overlay slide-in */
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.sidebar-overlay-panel {
+  animation: sidebar-slide-in 0.2s ease-out;
 }
 
 /* Flux shimmer */

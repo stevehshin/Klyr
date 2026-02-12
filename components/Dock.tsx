@@ -29,14 +29,14 @@ export function Dock({
 
   return (
     <div
-      className="klyr-dock fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 px-3 py-2 rounded-2xl bg-white/80 dark:bg-gray-900/80 border border-gray-200/60 dark:border-white/10 backdrop-blur-xl"
+      className="klyr-dock fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 px-2 sm:px-3 py-2 rounded-2xl bg-white/80 dark:bg-gray-900/80 border border-gray-200/60 dark:border-white/10 backdrop-blur-xl max-w-[calc(100vw-2rem)] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       role="toolbar"
       aria-label="Global dock"
     >
       {onOpenNotifications && (
         <button
           onClick={onOpenNotifications}
-          className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
           aria-label="Notifications"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +48,7 @@ export function Dock({
       {onOpenLens && (
         <button
           onClick={onOpenLens}
-          className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
           aria-label="Search (Lens)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +60,7 @@ export function Dock({
       {onOpenFlux && (
         <button
           onClick={onOpenFlux}
-          className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/10 transition-colors duration-200 flux-shimmer"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/10 transition-colors duration-200 flux-shimmer"
           aria-label="Flux — AI Assistant"
           title="Flux"
         >
@@ -71,7 +71,7 @@ export function Dock({
       {onOpenQuickJot && (
         <button
           onClick={() => setQuickJotFocused(true)}
-          className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
           aria-label="Quick Jot"
           title="Quick note or task"
         >
@@ -87,7 +87,7 @@ export function Dock({
           <button
             type="button"
             onClick={onFocusActiveTile}
-            className="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200 flex items-center gap-1.5"
+            className="min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200 flex items-center gap-1.5"
             title={`Active: ${activeTileLabel} — click to focus`}
           >
             <span className="opacity-70">Active:</span>
@@ -102,7 +102,7 @@ export function Dock({
             <button
               key={t.id}
               onClick={() => onRestoreTile?.(t.id)}
-              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
               title={t.label}
             >
               <span className="text-sm font-medium w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-700">

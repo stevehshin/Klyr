@@ -164,7 +164,7 @@ export function FluxPanel({
         aria-hidden
       />
       <div
-        className="fixed z-50 right-6 bottom-24 top-auto w-full max-w-[380px] max-h-[min(75vh,520px)] flex flex-col rounded-2xl bg-white/98 dark:bg-gray-900/98 border border-gray-200/70 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 backdrop-blur-xl"
+        className="fixed z-50 left-4 right-4 sm:left-auto sm:right-6 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:bottom-24 top-auto w-full max-w-[380px] max-h-[min(75vh,520px)] flex flex-col rounded-2xl bg-white/98 dark:bg-gray-900/98 border border-gray-200/70 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 backdrop-blur-xl"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? "translateY(0) scale(1)" : "translateY(8px) scale(0.98)",

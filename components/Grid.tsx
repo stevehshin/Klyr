@@ -55,6 +55,8 @@ export interface GridProps {
   onShare?: () => void;
   focusMode?: boolean;
   onFocusModeChange?: (value: boolean) => void;
+  /** When set, show a menu (hamburger) button in the header to open the sidebar (e.g. on mobile) */
+  onOpenSidebar?: () => void;
 }
 
 const PRIMARY_TILE_KEY = "klyr-primary-tile";
@@ -199,6 +201,7 @@ export function Grid({
   onShare,
   focusMode = false,
   onFocusModeChange,
+  onOpenSidebar,
 }: GridProps) {
   const [tiles, setTiles] = useState<TileData[]>(
     initialTiles.filter((t) => !t.hidden)
@@ -478,13 +481,25 @@ export function Grid({
     <>
       <ActiveTileKeyboard />
       <div className="h-screen w-full overflow-hidden flex flex-col bg-[var(--background)]">
-        {/* OS Control Layer — [Grid ▼] [Share] [Focus] [Add] [⋮] */}
+        {/* OS Control Layer — [☰] [Grid ▼] [Share] [Focus] [Add] [⋮] */}
         <header
-        className="relative z-30 flex-shrink-0 border-b border-gray-200/60 dark:border-white/5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 py-2.5 flex items-center gap-3"
+        className="relative z-30 flex-shrink-0 border-b border-gray-200/60 dark:border-white/5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3"
         style={{ transition: "border-color var(--motion-duration) var(--motion-ease)" }}
       >
+        {onOpenSidebar && (
+          <button
+            type="button"
+            onClick={onOpenSidebar}
+            className="flex-shrink-0 p-2.5 -ml-1 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center md:hidden"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         {/* Grid switcher */}
-        <div className="flex items-center gap-1 min-w-0" ref={gridSwitcherRef}>
+        <div className="flex items-center gap-1 min-w-0 flex-1 md:flex-initial" ref={gridSwitcherRef}>
           {grids.length > 0 && onGridSelect ? (
             <>
               <button
@@ -526,11 +541,11 @@ export function Grid({
 
         <div className="flex-1 min-w-0" aria-hidden="true" />
 
-        <div className="flex items-center gap-1" ref={actionsRef}>
+        <div className="flex items-center gap-0.5 sm:gap-1" ref={actionsRef}>
           {onShare && (
             <button
               onClick={onShare}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Share grid"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -541,7 +556,7 @@ export function Grid({
           {onFocusModeChange && (
             <button
               onClick={() => onFocusModeChange(!focusMode)}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`min-h-[44px] min-w-[44px] hidden sm:flex items-center justify-center p-2 rounded-lg transition-colors ${
                 focusMode
                   ? "text-primary-600 dark:text-primary-400 bg-primary-600/10"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -558,7 +573,7 @@ export function Grid({
           <div className="relative">
             <button
               onClick={() => setActionsOpen((o) => !o)}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="More actions"
               aria-expanded={actionsOpen}
             >

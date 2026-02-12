@@ -19,6 +19,7 @@ import { AddMembersModal } from "@/components/AddMembersModal";
 import { TileData } from "@/components/Grid";
 import { ActiveGridProvider, ActiveTileProvider, useActiveTile } from "@/context/KlyrContext";
 import { getTileLabel } from "@/lib/tileLabels";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 function DockWithActiveTile({
   currentGrid,
@@ -93,6 +94,8 @@ export function GridWorkspace({
   const [viewMode, setViewMode] = useState<"grid" | "channel">("grid");
   const [focusMode, setFocusMode] = useState(false);
   const [fluxOpen, setFluxOpen] = useState(false);
+  const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const { isMobile } = useMediaQuery();
 
   const refreshChannels = async () => {
     try {
@@ -393,12 +396,47 @@ export function GridWorkspace({
     );
   }
 
+  const sidebarWidth = isMobile ? 0 : (focusMode ? 0 : 256);
+  const showSidebarInFlow = !isMobile;
+
   return (
-    <div className="flex h-screen">
-      <div
-        className="flex-shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
-        style={{ width: focusMode ? 0 : 256, minWidth: focusMode ? 0 : 256, opacity: focusMode ? 0 : 1 }}
-      >
+    <div className="flex h-screen overflow-hidden">
+      {/* Desktop: sidebar in flow. Mobile: sidebar as overlay (rendered below when sidebarOpenMobile) */}
+      {showSidebarInFlow && (
+        <div
+          className="flex-shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ width: sidebarWidth, minWidth: sidebarWidth, opacity: focusMode ? 0 : 1 }}
+        >
+          <Sidebar
+            grids={grids}
+            currentGridId={viewMode === "grid" ? currentGrid.id : ""}
+            onGridSelect={(id) => {
+              handleGridSelect(id);
+              setViewMode("grid");
+            }}
+            onCreateGrid={handleCreateGrid}
+            onRenameGrid={handleRenameGrid}
+            onShareGrid={handleShareGrid}
+            channels={channels}
+            channelGroups={channelGroups}
+            ungroupedChannels={ungroupedChannels}
+            currentChannelId={viewMode === "channel" ? currentChannelId : ""}
+            onChannelSelect={handleChannelSelect}
+            onCreateChannel={handleCreateChannel}
+            onCreateChannelGroup={() => setShowCreateChannelGroupModal(true)}
+            onManageChannelGroup={(id, name) => {
+              setManageGroupId(id);
+              setManageGroupName(name);
+            }}
+            onStartDM={() => setShowDMModal(true)}
+            hasGrid={!!currentGrid}
+            userEmail={userEmail}
+            onOpenThemeCustomizer={() => setShowThemeCustomizer(true)}
+            onOpenSettings={() => setShowSettings(true)}
+          />
+        </div>
+      )}
+      {isMobile && sidebarOpenMobile && (
         <Sidebar
           grids={grids}
           currentGridId={viewMode === "grid" ? currentGrid.id : ""}
@@ -415,7 +453,10 @@ export function GridWorkspace({
           currentChannelId={viewMode === "channel" ? currentChannelId : ""}
           onChannelSelect={handleChannelSelect}
           onCreateChannel={handleCreateChannel}
-          onCreateChannelGroup={() => setShowCreateChannelGroupModal(true)}
+          onCreateChannelGroup={() => {
+            setShowCreateChannelGroupModal(true);
+            setSidebarOpenMobile(false);
+          }}
           onManageChannelGroup={(id, name) => {
             setManageGroupId(id);
             setManageGroupName(name);
@@ -425,8 +466,10 @@ export function GridWorkspace({
           userEmail={userEmail}
           onOpenThemeCustomizer={() => setShowThemeCustomizer(true)}
           onOpenSettings={() => setShowSettings(true)}
+          isOverlay
+          onClose={() => setSidebarOpenMobile(false)}
         />
-      </div>
+      )}
       {showDMModal && currentGrid && (
         <SelectConversationModal
           onClose={() => setShowDMModal(false)}
@@ -517,6 +560,7 @@ export function GridWorkspace({
               onShare={() => setShareModalGridId(currentGrid.id)}
               focusMode={focusMode}
               onFocusModeChange={setFocusMode}
+              onOpenSidebar={isMobile ? () => setSidebarOpenMobile(true) : undefined}
             />
             <DockWithActiveTile
               currentGrid={currentGrid}

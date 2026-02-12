@@ -45,6 +45,9 @@ export interface SidebarProps {
   userEmail: string;
   onOpenThemeCustomizer: () => void;
   onOpenSettings?: () => void;
+  /** Mobile/tablet: render as overlay with backdrop; show close button and call onClose when selecting or closing */
+  isOverlay?: boolean;
+  onClose?: () => void;
 }
 
 export function Sidebar({
@@ -68,6 +71,8 @@ export function Sidebar({
   userEmail,
   onOpenThemeCustomizer,
   onOpenSettings,
+  isOverlay = false,
+  onClose,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState<"grids" | "channels" | "dms">("grids");
@@ -88,12 +93,188 @@ export function Sidebar({
     }
   }, [channelGroups]);
 
+  const handleGridSelect = (gridId: string) => {
+    onGridSelect(gridId);
+    onClose?.();
+  };
+  const handleChannelSelect = (channelId: string) => {
+    onChannelSelect(channelId);
+    onClose?.();
+  };
+
+  if (isOverlay) {
+    return (
+      <>
+        <div
+          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm md:hidden"
+          aria-hidden
+          onClick={onClose}
+        />
+        <div
+          className="fixed inset-y-0 left-0 z-50 w-[min(280px,85vw)] max-w-[280px] h-full bg-gray-900 border-r border-gray-800 flex flex-col shadow-xl transition-transform duration-200 ease-out md:hidden sidebar-overlay-panel"
+          role="dialog"
+          aria-label="Navigation menu"
+        >
+          <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Image src="/logo.svg" alt="Klyr" width={32} height={32} />
+              <span className="text-white font-bold text-lg">Klyr</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex border-b border-gray-800">
+            <button
+              onClick={() => setActiveSection("grids")}
+              className={`flex-1 min-h-[48px] px-4 text-sm font-medium transition-colors ${
+                activeSection === "grids"
+                  ? "text-white border-b-2 border-primary-500"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Grids
+            </button>
+            <button
+              onClick={() => setActiveSection("channels")}
+              className={`flex-1 min-h-[48px] px-4 text-sm font-medium transition-colors ${
+                activeSection === "channels"
+                  ? "text-white border-b-2 border-primary-500"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Channels
+            </button>
+            <button
+              onClick={() => setActiveSection("dms")}
+              className={`flex-1 min-h-[48px] px-4 text-sm font-medium transition-colors ${
+                activeSection === "dms"
+                  ? "text-white border-b-2 border-primary-500"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              DMs
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {activeSection === "grids" && (
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your Grids</span>
+                  <button
+                    onClick={() => { onCreateGrid(); onClose?.(); }}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-gray-800"
+                    aria-label="Create grid"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {grids.map((grid) => (
+                    <button
+                      key={grid.id}
+                      onClick={() => handleGridSelect(grid.id)}
+                      className={`w-full text-left px-3 py-3 rounded-lg transition-colors flex items-center gap-2 min-h-[48px] ${
+                        grid.id === currentGridId
+                          ? "bg-primary-600 text-white"
+                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      }`}
+                    >
+                      <span className={`w-8 h-8 flex-shrink-0 rounded flex items-center justify-center text-base ${grid.id === currentGridId ? "bg-white/20" : "bg-gray-800/80"}`}>
+                        {grid.icon && grid.icon.trim() ? grid.icon.trim() : grid.name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="truncate text-sm font-medium">{grid.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeSection === "channels" && (
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Channels</span>
+                  <button
+                    onClick={onCreateChannel}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-gray-800"
+                    aria-label="Create channel"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                {(channelGroups?.length ? channelGroups : [{ id: "_ungrouped", name: "", order: 0, channels: ungroupedChannels ?? [] }]).map((group) => (
+                  <div key={group.id} className="mb-3">
+                    {group.name && (
+                      <p className="px-2 py-1 text-xs font-medium text-gray-500 uppercase">{group.name}</p>
+                    )}
+                    <div className="space-y-0.5">
+                      {(group.channels ?? []).map((ch) => (
+                        <button
+                          key={ch.id}
+                          onClick={() => handleChannelSelect(ch.id)}
+                          className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-2 min-h-[48px] ${
+                            ch.id === currentChannelId
+                              ? "bg-primary-600 text-white"
+                              : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                          }`}
+                        >
+                          <span className="text-lg">{ch.emoji}</span>
+                          <span className="truncate text-sm">{ch.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeSection === "dms" && (
+              <div className="p-3">
+                <button
+                  onClick={() => { onStartDM?.(); onClose?.(); }}
+                  className="w-full text-left px-3 py-3 rounded-lg min-h-[48px] text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-2"
+                >
+                  <span className="text-lg">💬</span>
+                  <span className="text-sm">New conversation</span>
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="p-3 border-t border-gray-800 flex gap-2">
+            <button
+              onClick={() => { onOpenThemeCustomizer(); onClose?.(); }}
+              className="flex-1 min-h-[44px] px-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            >
+              Theme
+            </button>
+            {onOpenSettings && (
+              <button
+                onClick={() => { onOpenSettings(); onClose?.(); }}
+                className="flex-1 min-h-[44px] px-3 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+              >
+                Settings
+              </button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (isCollapsed) {
     return (
       <div className="w-16 h-screen bg-gray-900 border-r border-gray-800 flex flex-col items-center py-4">
         <button
           onClick={() => setIsCollapsed(false)}
-          className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800"
           aria-label="Expand sidebar"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
