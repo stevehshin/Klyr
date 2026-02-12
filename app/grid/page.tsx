@@ -65,7 +65,7 @@ export default async function GridPage({
     });
 
     if (gridData) {
-      // Map tiles with channel metadata and call tile metadata
+      // Map tiles with channel metadata and call tile metadata (use undefined instead of null for TileData)
       const tilesWithMetadata = gridData.tiles.map((tile) => {
         const channelName = tile.channel?.name;
         const channelEmoji = tile.channel?.emoji;
@@ -80,10 +80,10 @@ export default async function GridPage({
           w: tile.w,
           h: tile.h,
           hidden: tile.hidden,
-          channelId: tile.channelId,
+          channelId: tile.channelId ?? undefined,
           channelName,
           channelEmoji,
-          conversationId: tile.conversationId,
+          conversationId: tile.conversationId ?? undefined,
           conversationName,
           roomId,
           roomLabel,
@@ -98,9 +98,17 @@ export default async function GridPage({
     }
   }
 
+  // Serialize grids for client (GridInfo expects createdAt as string)
+  const initialGrids = user.grids.map((g) => ({
+    id: g.id,
+    name: g.name,
+    icon: g.icon,
+    createdAt: g.createdAt.toISOString(),
+  }));
+
   return (
     <GridWorkspace
-      initialGrids={user.grids}
+      initialGrids={initialGrids}
       currentGrid={currentGrid}
       userId={user.id}
       userEmail={user.email}

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // POST - Add members to a channel
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSessionFromRequest(request);
@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const channelId = params.id;
+    const { id: channelId } = await params;
     const body = await request.json();
     const { emails } = body;
 

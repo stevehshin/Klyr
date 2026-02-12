@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // GET - Fetch messages for a channel
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSessionFromRequest(request);
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const channelId = params.id;
+    const { id: channelId } = await params;
 
     // Check if user is a member
     const membership = await prisma.channelMember.findUnique({
@@ -59,7 +59,7 @@ export async function GET(
 // POST - Send a message to a channel
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSessionFromRequest(request);
@@ -67,7 +67,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const channelId = params.id;
+    const { id: channelId } = await params;
     const body = await request.json();
     const { encryptedContent } = body;
 

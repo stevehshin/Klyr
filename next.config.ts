@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  eslint: {
+    // Avoid ESM resolution issues with eslint-config-next on Vercel build
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
