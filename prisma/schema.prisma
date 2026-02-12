@@ -25,6 +25,10 @@ model User {
   channelMemberships         ChannelMember[]
   channelMessages            ChannelMessage[]
   messages                   Message[]
+  createdProjects            Project[]
+  createdTasks               Task[]
+  assignedTasks              Task[]             @relation("TaskAssignee")
+  taskComments               TaskComment[]
 }
 
 model Grid {
@@ -35,6 +39,8 @@ model Grid {
   owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   tiles       Tile[]
   sharedWith  GridShare[]
+  projects    Project[]
+  tasks       Task[]
   createdAt   DateTime     @default(now())
   
   @@index([ownerId])
@@ -63,6 +69,7 @@ model Tile {
   w              Int
   h              Int
   hidden         Boolean   @default(false)
+  onGrid         Boolean   @default(true)  // false = DM only in side panel until "Add to grid"
   channelId      String?   // For channel tiles and channel call tiles
   channel        Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   conversationId String?   // For DM tiles and DM call tiles
@@ -138,5 +145,62 @@ model ChannelMessage {
   createdAt        DateTime @default(now())
   
   @@index([channelId])
+  @@index([userId])
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  gridId          String
+  grid            Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  visibility      String   @default("SHARED") // "PRIVATE" | "SHARED"
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  tasks           Task[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([gridId])
+  @@index([createdByUserId])
+}
+
+model Task {
+  id              String        @id @default(cuid())
+  gridId          String
+  grid            Grid          @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?
+  status          String        @default("BACKLOG") // BACKLOG | IN_PROGRESS | BLOCKED | DONE
+  priority        String        @default("MEDIUM")  // LOW | MEDIUM | HIGH
+  dueAt           DateTime?
+  assigneeUserId  String?
+  assignee        User?         @relation("TaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  createdByUserId String
+  createdBy       User          @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  visibility      String        @default("SHARED") // PRIVATE | SHARED
+  calendarEventId String?       // Optional link to calendar event (e.g. Google event id or url)
+  comments        TaskComment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([gridId])
+  @@index([projectId])
+  @@index([assigneeUserId])
+  @@index([createdByUserId])
+}
+
+model TaskComment {
+  id               String   @id @default(cuid())
+  taskId           String
+  task             Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedContent String
+  createdAt        DateTime @default(now())
+
+  @@index([taskId])
   @@index([userId])
 }

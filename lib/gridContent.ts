@@ -157,6 +157,29 @@ export interface OverdueTask {
 }
 
 export async function getOverdueTasks(gridId: string): Promise<OverdueTask[]> {
+  // Prefer API tasks for this grid if available (auth from cookie)
+  if (typeof fetch !== "undefined") {
+    try {
+      const res = await fetch(
+        `/api/tasks?gridId=${encodeURIComponent(gridId)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const tasks = (data.tasks ?? []) as {
+          id: string;
+          title: string;
+          dueAt?: string | null;
+          status: string;
+        }[];
+        const today = new Date().toISOString().slice(0, 10);
+        return tasks
+          .filter((t) => t.status !== "DONE" && t.dueAt && t.dueAt.slice(0, 10) < today)
+          .map((t) => ({ tileId: t.id, text: t.title, dueDate: t.dueAt!.slice(0, 10) }));
+      }
+    } catch {
+      // fallback to localStorage
+    }
+  }
   const tiles = await getGridTiles(gridId);
   const taskTiles = tiles.filter((t) => t.type === "tasks");
   const today = new Date().toISOString().slice(0, 10);
@@ -234,6 +257,62 @@ export async function suggestTilesForGrid(
     });
 
   return suggestions.slice(0, 4);
+}
+
+/** Assemble content for "What should I focus on today?" (overdue tasks, due soon, calendar, channel activity). */
+export async function getFocusContent(gridId: string): Promise<string> {
+  const parts: string[] = [];
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const weekEnd = new Date(now);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  try {
+    const tasksRes = await fetch(`/api/tasks?gridId=${encodeURIComponent(gridId)}`);
+    if (tasksRes.ok) {
+      const data = await tasksRes.json();
+      const tasks = (data.tasks ?? []) as { title: string; dueAt?: string | null; status: string }[];
+      const overdue = tasks.filter((t) => t.status !== "DONE" && t.dueAt && t.dueAt.slice(0, 10) < today);
+      const dueSoon = tasks.filter(
+        (t) =>
+          t.status !== "DONE" &&
+          t.dueAt &&
+          t.dueAt >= now.toISOString() &&
+          new Date(t.dueAt) <= weekEnd
+      );
+      if (overdue.length > 0) {
+        parts.push("[Overdue tasks]\n" + overdue.map((t) => `• ${t.title} (due ${t.dueAt!.slice(0, 10)})`).join("\n"));
+      }
+      if (dueSoon.length > 0) {
+        parts.push("[Due soon (this week)]\n" + dueSoon.map((t) => `• ${t.title} (due ${t.dueAt!.slice(0, 10)})`).join("\n"));
+      }
+    }
+  } catch {
+    // skip
+  }
+
+  try {
+    const timeMin = now.toISOString();
+    const timeMax = weekEnd.toISOString();
+    const calRes = await fetch(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
+    if (calRes.ok) {
+      const calData = await calRes.json();
+      const events = (calData.events ?? []) as { summary: string; start: string }[];
+      if (events.length > 0) {
+        parts.push("[Upcoming calendar events]\n" + events.slice(0, 15).map((e) => `• ${e.start.slice(0, 16)} ${e.summary}`).join("\n"));
+      }
+    }
+  } catch {
+    // skip
+  }
+
+  const gridContent = await gatherGridContent(gridId, since24h);
+  if (gridContent && !gridContent.includes("No recent content")) {
+    parts.push("[Recent grid activity]\n" + gridContent);
+  }
+
+  if (parts.length === 0) return "No overdue tasks, no upcoming calendar events, and no recent grid activity in the last 24 hours.";
+  return parts.join("\n\n---\n\n");
 }
 
 export { since24h, sinceYesterday };

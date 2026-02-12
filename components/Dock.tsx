@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 
+export interface LoopBarProps {
+  tileId: string;
+  roomLabel: string;
+  muted: boolean;
+  onMuteToggle: () => void;
+  onLeave: () => void;
+  onFocus: () => void;
+}
+
 export interface DockProps {
   /** Minimized tile ids to show as icons; map id -> label for tooltip */
   minimizedTiles?: { id: string; label: string }[];
@@ -13,6 +22,8 @@ export interface DockProps {
   /** Active tile label for "Active: &lt;label&gt;" chip; click focuses tile */
   activeTileLabel?: string;
   onFocusActiveTile?: () => void;
+  /** When user is in a Loop room, show Loop bar (room name, mute, leave) */
+  loopBar?: LoopBarProps;
 }
 
 export function Dock({
@@ -24,6 +35,7 @@ export function Dock({
   onOpenNotifications,
   activeTileLabel,
   onFocusActiveTile,
+  loopBar,
 }: DockProps) {
   const [quickJotFocused, setQuickJotFocused] = useState(false);
 
@@ -81,6 +93,41 @@ export function Dock({
         </button>
       )}
 
+      {loopBar && (
+        <>
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" aria-hidden />
+          <div className="flex items-center gap-1 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 px-2 py-1.5">
+            <button
+              type="button"
+              onClick={loopBar.onFocus}
+              className="text-xs font-medium text-primary-700 dark:text-primary-300 truncate max-w-[100px] hover:underline"
+              title={`Loop: ${loopBar.roomLabel} — click to focus`}
+            >
+              🎙 {loopBar.roomLabel}
+            </button>
+            <button
+              type="button"
+              onClick={loopBar.onMuteToggle}
+              className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-200/80 dark:hover:bg-gray-700/80"
+              title={loopBar.muted ? "Unmute" : "Mute"}
+            >
+              {loopBar.muted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={loopBar.onLeave}
+              className="text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              title="Leave room"
+            >
+              Leave
+            </button>
+          </div>
+        </>
+      )}
       {activeTileLabel && onFocusActiveTile && (
         <>
           <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" aria-hidden />

@@ -41,6 +41,10 @@ export interface SidebarProps {
   onCreateChannelGroup?: () => void;
   onManageChannelGroup?: (groupId: string, groupName: string) => void;
   onStartDM?: () => void;
+  /** List of DM conversations (from /api/tiles/dms); clicking one opens it in main area */
+  dmTiles?: { id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }[];
+  currentDMTileId?: string | null;
+  onSelectDM?: (dm: { id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }) => void;
   hasGrid?: boolean;
   userEmail: string;
   onOpenThemeCustomizer: () => void;
@@ -67,6 +71,9 @@ export function Sidebar({
   onCreateChannelGroup,
   onManageChannelGroup,
   onStartDM,
+  dmTiles = [],
+  currentDMTileId = null,
+  onSelectDM,
   hasGrid = false,
   userEmail,
   onOpenThemeCustomizer,
@@ -237,12 +244,39 @@ export function Sidebar({
               </div>
             )}
             {activeSection === "dms" && (
-              <div className="p-3">
+              <div className="p-3 space-y-1">
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Direct Messages</span>
+                  <button
+                    onClick={() => { onStartDM?.(); onClose?.(); }}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-gray-800"
+                    aria-label="New DM"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                {dmTiles.map((dm) => (
+                  <button
+                    key={dm.id}
+                    onClick={() => { onSelectDM?.(dm); onClose?.(); }}
+                    className={`w-full text-left px-3 py-3 rounded-lg min-h-[48px] flex items-center gap-2 ${
+                      dm.id === currentDMTileId
+                        ? "bg-primary-600 text-white"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-lg">💬</span>
+                    <span className="truncate text-sm flex-1">{dm.conversationName}</span>
+                    {!dm.onGrid && <span className="text-xs opacity-75">Panel</span>}
+                  </button>
+                ))}
                 <button
                   onClick={() => { onStartDM?.(); onClose?.(); }}
-                  className="w-full text-left px-3 py-3 rounded-lg min-h-[48px] text-gray-300 hover:bg-gray-800 hover:text-white flex items-center gap-2"
+                  className="w-full text-left px-3 py-3 rounded-lg min-h-[48px] text-gray-400 hover:bg-gray-800 hover:text-white flex items-center gap-2 border border-dashed border-gray-600"
                 >
-                  <span className="text-lg">💬</span>
+                  <span className="text-lg">+</span>
                   <span className="text-sm">New conversation</span>
                 </button>
               </div>
@@ -703,7 +737,7 @@ export function Sidebar({
               {onStartDM && (
                 <button
                   onClick={onStartDM}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-800"
                   title="New DM"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -712,13 +746,37 @@ export function Sidebar({
                 </button>
               )}
             </div>
-            <div className="mt-2 px-3">
-              <p className="text-xs text-gray-500 italic">
-                {hasGrid
-                  ? "Start a new DM or add a Messages tile from the grid"
-                  : "Select a grid, then add a Messages tile for encrypted DMs"}
-              </p>
+            <p className="text-xs text-gray-500 px-2 mb-2">
+              Open in the panel first; add to grid when you want.
+            </p>
+            <div className="space-y-0.5">
+              {dmTiles.map((dm) => (
+                <button
+                  key={dm.id}
+                  onClick={() => onSelectDM?.(dm)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                    dm.id === currentDMTileId
+                      ? "bg-primary-600 text-white"
+                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  }`}
+                >
+                  <span className="flex-shrink-0">💬</span>
+                  <span className="truncate flex-1">{dm.conversationName}</span>
+                  {!dm.onGrid && (
+                    <span className="text-xs text-gray-500 flex-shrink-0" title="In panel only">Panel</span>
+                  )}
+                </button>
+              ))}
             </div>
+            {onStartDM && (
+              <button
+                onClick={onStartDM}
+                className="w-full mt-2 text-left px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white flex items-center gap-2 text-sm border border-dashed border-gray-600"
+              >
+                <span>+</span>
+                <span>New conversation</span>
+              </button>
+            )}
           </div>
         )}
       </div>

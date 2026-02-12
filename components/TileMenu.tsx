@@ -13,13 +13,14 @@ export interface TileMenuProps {
 
 const TILE_TYPES = [
   { id: "notes", name: "Notes", icon: "📝", description: "Quick notes and text" },
-  { id: "tasks", name: "Tasks", icon: "✅", description: "To-do list with checkboxes" },
+  { id: "tasks", name: "Projects & Tasks", icon: "✅", description: "Kanban and list with assignees" },
   { id: "links", name: "Links", icon: "🔗", description: "Bookmarks and URLs" },
   { id: "calendar", name: "Calendar", icon: "📅", description: "Calendar view" },
   { id: "summary", name: "Daily Summary", icon: "✨", description: "AI summary of new grid content" },
   { id: "dm", name: "Messages", icon: "💬", description: "Encrypted direct messages", needsSelection: true },
   { id: "channel", name: "Channel", icon: "📢", description: "Team channel conversation", needsSelection: true },
   { id: "call", name: "Call", icon: "📹", description: "Video call", needsCallSelection: true },
+  { id: "loop_room", name: "Loop Room", icon: "🎙", description: "Opt-in voice room (join to talk)" },
 ];
 
 export function TileMenu({ gridId, onSelectTileType }: TileMenuProps) {

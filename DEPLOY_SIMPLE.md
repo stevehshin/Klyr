@@ -50,7 +50,7 @@ So Vercel can see and deploy your app, the code needs to be on GitHub.
    git add .
    git commit -m "First commit"
    git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/klyr.git
+   git remote add origin https://github.com/stevehshin/klyr.git
    git push -u origin main
    ```
 
@@ -60,18 +60,38 @@ So Vercel can see and deploy your app, the code needs to be on GitHub.
 
 ## Step 3: Tell Neon About Your Tables (One-Time Setup)
 
-Your app expects certain tables in the database. Create them once:
+**What this means:** Your Neon database starts empty. Klyr needs specific “tables” in it (like User, Grid, Tile, etc.) to store your data. This step creates those tables in Neon so the app can run.
 
-1. In your Klyr folder, make sure your `.env` file has the two Neon URLs:
+**What you do:**
+
+1. **Open the `.env` file** in your Klyr project folder (same place as `package.json`).  
+   - If you don’t see `.env`, copy `.env.example` and rename the copy to `.env`.
+
+2. **Put your two Neon URLs in `.env`.**  
+   From your Neon project (Step 1), you copied two connection strings. In `.env` you should have two lines like this (use your real URLs—they’re long and start with `postgresql://`):
    ```text
-   DATABASE_URL="postgresql://..."   (your pooled URL from Step 1)
-   DIRECT_URL="postgresql://..."     (your direct URL from Step 1)
+   DATABASE_URL="postgresql://user:password@ep-xxxx.neon.tech/neondb?sslmode=require"
+   DIRECT_URL="postgresql://user:password@ep-xxxx.neon.tech/neondb?sslmode=require"
    ```
-2. In Terminal, from the Klyr folder, run:
+   - **Pooled** URL from Neon → use for `DATABASE_URL`.
+   - **Direct** URL from Neon → use for `DIRECT_URL`.  
+   If Neon only gave you one URL, use that same URL for both lines. Save the file.
+
+3. **Open Terminal** and go to your Klyr folder, e.g.:
+   ```bash
+   cd "/Users/steve.shin/Library/CloudStorage/GoogleDrive-steve.shin@salesforce.com/My Drive/Solution Engineering Stuff/Cursor/Project 1:16:2026/klyr"
+   ```
+
+4. **Run the command that creates the tables:**
    ```bash
    npm run db:deploy
    ```
-   (Or: `./node_modules/.bin/prisma db push` if that’s what you’ve been using.)
+   If that says “command not found”, try:
+   ```bash
+   ./node_modules/.bin/prisma db push
+   ```
+
+5. When it finishes without errors, you’re done. Neon now has the tables (User, Grid, Tile, etc.) and your app can use them. You only need to do this once per database.
 
 ---
 
@@ -79,7 +99,27 @@ Your app expects certain tables in the database. Create them once:
 
 Vercel will build your app and give you a link anyone can use.
 
-1. Go to **https://vercel.com** and sign in. Choose **Continue with GitHub** so Vercel can see your repos.
+### Where to get the two Neon URLs (pooled and direct)
+
+In Neon, open your project and click **Connect** (or the connection / SQL icon). A box titled **“Connect to your database”** will open.
+
+**Get the pooled URL (for `DATABASE_URL`):**
+
+1. In that box, find the **“Connection pooling”** toggle. Leave it **ON** (green).
+2. The long line of text below it is your **pooled** connection string (it has `-pooler` in the address). Click **“Show password”** so the real password is visible, then click **“Copy snippet”** (or select all and copy). Paste this somewhere safe (e.g. a Notes app)—this is your **pooled URL**. You’ll use it for **DATABASE_URL** in Vercel.
+
+**Get the direct URL (for `DIRECT_URL`):**
+
+3. Turn the **“Connection pooling”** toggle **OFF**. The connection string will change (the `-pooler` part will disappear).
+4. Click **“Copy snippet”** again (the password is still shown). This second URL is your **direct URL**. You’ll use it for **DIRECT_URL** in Vercel.
+
+You should now have two different URLs: one with `-pooler` (pooled) and one without (direct). Use them in Vercel as in the table below.
+
+---
+
+**Now deploy on Vercel:**
+
+1. Go to **https://vercel.com** and sign in (with GitHub connected so Vercel can see your repos).
 2. Click **Add New** → **Project**.
 3. Find your **klyr** repository and click **Import**.
 4. Before clicking Deploy, open **Environment Variables** (or **Configure**).
@@ -87,11 +127,11 @@ Vercel will build your app and give you a link anyone can use.
 
    | Name           | Value                                      |
    |----------------|--------------------------------------------|
-   | `DATABASE_URL` | Paste your Neon **pooled** connection URL |
-   | `DIRECT_URL`   | Paste your Neon **direct** connection URL |
+   | `DATABASE_URL` | Paste the **pooled** URL (the one with `-pooler`) |
+   | `DIRECT_URL`   | Paste the **direct** URL (the one without `-pooler`) |
    | `JWT_SECRET`   | Any long random string (e.g. 32+ letters) |
 
-   To make a random `JWT_SECRET`, you can run in Terminal:  
+   To make a random `JWT_SECRET`, run in Terminal:  
    `openssl rand -base64 32`  
    and paste the result.
 
@@ -106,6 +146,23 @@ When the deploy finishes, Vercel will show you a link like:
 **https://klyr-xxxxx.vercel.app**
 
 Open that link in any browser, on any device. That’s your app on the internet. You can share this URL (or add a custom domain later in Vercel’s project Settings → Domains).
+
+---
+
+## Deploying future updates
+
+Once the app is live, any new features or fixes will go live automatically when you push to GitHub:
+
+1. Make your changes in the **klyr** project folder.
+2. In Terminal, from the klyr folder:
+   ```bash
+   git add .
+   git commit -m "Brief description of what you changed"
+   git push origin main
+   ```
+3. Vercel will detect the push, build, and deploy. Check the **Deployments** tab in your Vercel project to see the new build go live.
+
+No need to click “Deploy” in Vercel unless you want to re-run a build for the same code (e.g. after changing environment variables).
 
 ---
 

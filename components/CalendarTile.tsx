@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export interface CalendarTileProps {
   tileId: string;
+  gridId?: string;
   onClose: () => void;
 }
 
@@ -33,7 +34,7 @@ function isSameDay(d: Date, year: number, month: number, day: number) {
   return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
 }
 
-export function CalendarTile({ tileId, onClose }: CalendarTileProps) {
+export function CalendarTile({ tileId, gridId, onClose }: CalendarTileProps) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -298,8 +299,48 @@ export function CalendarTile({ tileId, onClose }: CalendarTileProps) {
             <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">This month</p>
             <ul className="space-y-1.5">
               {events.slice(0, 10).map((ev) => (
-                <li key={ev.id} className="text-xs text-gray-700 dark:text-gray-300 truncate">
-                  {ev.allDay ? "All day" : ev.start.slice(11, 16)} — {ev.summary}
+                <li key={ev.id} className="flex items-center justify-between gap-2 group">
+                  <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+                    {ev.allDay ? "All day" : ev.start.slice(11, 16)} — {ev.summary}
+                  </span>
+                  {gridId && (
+                    <span className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const oneHourBefore = new Date(ev.start);
+                          oneHourBefore.setHours(oneHourBefore.getHours() - 1);
+                          try {
+                            const res = await fetch("/api/tasks", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                gridId,
+                                title: `Prep: ${ev.summary}`,
+                                dueAt: oneHourBefore.toISOString(),
+                                visibility: "SHARED",
+                                calendarEventId: ev.id || ev.htmlLink || undefined,
+                              }),
+                            });
+                            if (res.ok) setConnectMessage("Task created");
+                          } catch {}
+                        }}
+                        className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline"
+                      >
+                        Task
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent("klyr-create-loop-from-event", { detail: { eventTitle: ev.summary, gridId } }));
+                          setConnectMessage("Start Loop — add a Loop Room tile for this event");
+                        }}
+                        className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline"
+                      >
+                        Loop
+                      </button>
+                    </span>
+                  )}
                 </li>
               ))}
               {events.length > 10 && <li className="text-xs text-gray-500">+{events.length - 10} more</li>}

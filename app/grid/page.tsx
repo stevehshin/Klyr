@@ -68,13 +68,14 @@ export default async function GridPage({
     });
 
     if (gridData) {
-      // Map tiles with channel metadata and call tile metadata (use undefined instead of null for TileData)
-      const tilesWithMetadata = gridData.tiles.map((tile) => {
+      // Only show tiles that are on the grid (exclude panel-only DMs)
+      const onGridTiles = gridData.tiles.filter((t) => t.onGrid !== false);
+      const tilesWithMetadata = onGridTiles.map((tile) => {
         const channelName = tile.channel?.name;
         const channelEmoji = tile.channel?.emoji;
         const conversationName = tile.conversationId ? `Conversation ${tile.conversationId.split('-')[0]}` : undefined;
         const roomId = tile.channelId ?? tile.conversationId ?? gridData.id;
-        const roomLabel = tile.callRoomLabel ?? (tile.channelId ? `${channelEmoji || "📢"} #${channelName}` : tile.conversationId ? `Call with ${conversationName}` : "Grid call");
+        const roomLabel = tile.callRoomLabel ?? (tile.channelId ? `${channelEmoji || "📢"} #${channelName}` : tile.conversationId ? `Call with ${conversationName}` : tile.type === "loop_room" ? (tile.callRoomLabel ?? "Loop room") : "Grid call");
         return {
           id: tile.id,
           type: tile.type,
@@ -93,10 +94,41 @@ export default async function GridPage({
         };
       });
 
+      // Grid members (owner + shared users) for Tasks swim lanes and assignee picker
+      const ownerUser = await prisma.user.findUnique({
+        where: { id: gridData.ownerId },
+        select: { id: true, email: true },
+      });
+      const shares = await prisma.gridShare.findMany({
+        where: { gridId: gridData.id },
+        include: { user: { select: { id: true, email: true } } },
+      });
+      const memberIds = new Set<string>();
+      const gridMembers: { id: string; email: string; displayName: string }[] = [];
+      if (ownerUser) {
+        memberIds.add(ownerUser.id);
+        gridMembers.push({
+          id: ownerUser.id,
+          email: ownerUser.email,
+          displayName: ownerUser.email.split("@")[0] ?? ownerUser.email,
+        });
+      }
+      for (const s of shares) {
+        if (!memberIds.has(s.user.id)) {
+          memberIds.add(s.user.id);
+          gridMembers.push({
+            id: s.user.id,
+            email: s.user.email,
+            displayName: s.user.email.split("@")[0] ?? s.user.email,
+          });
+        }
+      }
+
       currentGrid = {
         id: gridData.id,
         name: gridData.name,
         tiles: tilesWithMetadata,
+        gridMembers,
       };
     }
   }
@@ -109,13 +141,16 @@ export default async function GridPage({
     createdAt: g.createdAt.toISOString(),
   }));
 
+  const gridMembers = currentGrid && "gridMembers" in currentGrid ? (currentGrid as { gridMembers?: { id: string; email: string; displayName: string }[] }).gridMembers ?? [] : [];
+
   return (
     <GridWorkspace
       initialGrids={initialGrids}
-      currentGrid={currentGrid}
+      currentGrid={currentGrid ? { id: currentGrid.id, name: currentGrid.name, tiles: currentGrid.tiles } : null}
       userId={user.id}
       userEmail={user.email}
       userIsAdmin={user.isAdmin}
+      gridMembers={gridMembers}
     />
   );
 }

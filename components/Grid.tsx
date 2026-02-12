@@ -10,6 +10,7 @@ import { CalendarTile } from "./CalendarTile";
 import { ChannelTile } from "./ChannelTile";
 import { CallTile } from "./CallTile";
 import { SummaryTile } from "./SummaryTile";
+import { LoopRoomTile } from "./LoopRoomTile";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
 import { TileMenu } from "./TileMenu";
 import { RestoreHiddenTilesModal } from "./RestoreHiddenTilesModal";
@@ -43,6 +44,8 @@ export interface GridInfo {
   name: string;
 }
 
+export type GridMember = { id: string; email: string; displayName: string };
+
 export interface GridProps {
   initialTiles: TileData[];
   userId: string;
@@ -51,6 +54,8 @@ export interface GridProps {
   userEmail?: string;
   /** For OS top bar: grid switcher and share */
   grids?: GridInfo[];
+  /** Grid members (owner + shared) for Tasks tile swim lanes / assignee */
+  gridMembers?: GridMember[];
   onGridSelect?: (id: string) => void;
   onShare?: () => void;
   focusMode?: boolean;
@@ -197,6 +202,7 @@ export function Grid({
   gridName,
   userEmail,
   grids = [],
+  gridMembers = [],
   onGridSelect,
   onShare,
   focusMode = false,
@@ -342,6 +348,28 @@ export function Grid({
     }
   };
 
+  // Create Loop from task or calendar event: add a Loop Room tile
+  useEffect(() => {
+    const onLoopFromTask = (e: Event) => {
+      const d = (e as CustomEvent).detail as { taskId?: string; title?: string; gridId?: string };
+      if (d.gridId !== gridId) return;
+      const label = (d.title ? `${d.title} Room` : "Loop room").slice(0, 120);
+      handleAddTile("loop_room", { roomLabel: label });
+    };
+    const onLoopFromEvent = (e: Event) => {
+      const d = (e as CustomEvent).detail as { eventTitle?: string; gridId?: string };
+      if (d.gridId !== gridId) return;
+      const label = (d.eventTitle ? `${d.eventTitle} Room` : "Loop room").slice(0, 120);
+      handleAddTile("loop_room", { roomLabel: label });
+    };
+    window.addEventListener("klyr-create-loop-from-task", onLoopFromTask);
+    window.addEventListener("klyr-create-loop-from-event", onLoopFromEvent);
+    return () => {
+      window.removeEventListener("klyr-create-loop-from-task", onLoopFromTask);
+      window.removeEventListener("klyr-create-loop-from-event", onLoopFromEvent);
+    };
+  }, [gridId]);
+
   // Handle copy grid link
   const handleCopyLink = () => {
     const url = window.location.href;
@@ -463,16 +491,34 @@ export function Grid({
           />
         );
       if (tile.type === "tasks")
-        return <TasksTile tileId={tile.id} onClose={() => handleCloseTile(tile.id)} />;
+        return (
+          <TasksTile
+            tileId={tile.id}
+            gridId={gridId}
+            userId={userId}
+            userEmail={userEmail ?? ""}
+            gridMembers={gridMembers}
+            onClose={() => handleCloseTile(tile.id)}
+          />
+        );
+      if (tile.type === "loop_room")
+        return (
+          <LoopRoomTile
+            tileId={tile.id}
+            roomLabel={tile.roomLabel ?? "Loop room"}
+            onClose={() => handleCloseTile(tile.id)}
+          />
+        );
       if (tile.type === "links")
         return <LinksTile tileId={tile.id} onClose={() => handleCloseTile(tile.id)} />;
       if (tile.type === "calendar")
-        return <CalendarTile tileId={tile.id} onClose={() => handleCloseTile(tile.id)} />;
+        return <CalendarTile tileId={tile.id} gridId={gridId} onClose={() => handleCloseTile(tile.id)} />;
       return null;
     },
     [
       gridId,
       userEmail,
+      gridMembers,
       handleCloseTile,
     ]
   );

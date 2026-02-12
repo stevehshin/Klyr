@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Grid } from "@/components/Grid";
 import { Sidebar, GridInfo, ChannelInfo, ChannelGroupInfo } from "@/components/Sidebar";
@@ -15,6 +15,7 @@ import { CreateChannelGroupModal } from "@/components/CreateChannelGroupModal";
 import { ManageChannelGroupModal } from "@/components/ManageChannelGroupModal";
 import { SelectConversationModal } from "@/components/SelectConversationModal";
 import { ChannelView } from "@/components/ChannelView";
+import { DMView } from "@/components/DMView";
 import { AddMembersModal } from "@/components/AddMembersModal";
 import { TileData } from "@/components/Grid";
 import { ActiveGridProvider, ActiveTileProvider, useActiveTile } from "@/context/KlyrContext";
@@ -23,6 +24,8 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 function DockWithActiveTile({
   currentGrid,
+  joinedLoopRoom,
+  loopBarMuted,
   onOpenFlux,
   onOpenLens,
   onOpenNotifications,
@@ -30,6 +33,8 @@ function DockWithActiveTile({
   onOpenSettings,
 }: {
   currentGrid: { id: string; name: string; tiles: TileData[] };
+  joinedLoopRoom: { tileId: string; roomLabel: string } | null;
+  loopBarMuted: boolean;
   onOpenFlux: () => void;
   onOpenLens: () => void;
   onOpenNotifications: () => void;
@@ -39,12 +44,22 @@ function DockWithActiveTile({
   const { activeTileId } = useActiveTile();
   const activeTile = currentGrid.tiles.find((t) => t.id === activeTileId);
   const activeTileLabel = activeTile
-    ? getTileLabel(activeTile.type, activeTile.channelName ?? activeTile.conversationName ?? undefined)
+    ? getTileLabel(activeTile.type, activeTile.channelName ?? activeTile.conversationName ?? activeTile.roomLabel ?? undefined)
     : undefined;
   const onFocusActiveTile = () => {
     if (activeTileId)
       window.dispatchEvent(new CustomEvent("klyr-focus-tile", { detail: { tileId: activeTileId } }));
   };
+  const loopBar = joinedLoopRoom
+    ? {
+        tileId: joinedLoopRoom.tileId,
+        roomLabel: joinedLoopRoom.roomLabel,
+        muted: loopBarMuted,
+        onMuteToggle: () => window.dispatchEvent(new CustomEvent("klyr-loop-mute", { detail: { tileId: joinedLoopRoom.tileId } })),
+        onLeave: () => window.dispatchEvent(new CustomEvent("klyr-loop-left", { detail: { tileId: joinedLoopRoom.tileId, roomLabel: joinedLoopRoom.roomLabel } })),
+        onFocus: () => window.dispatchEvent(new CustomEvent("klyr-focus-tile", { detail: { tileId: joinedLoopRoom.tileId } })),
+      }
+    : undefined;
   return (
     <Dock
       onOpenFlux={onOpenFlux}
@@ -53,9 +68,12 @@ function DockWithActiveTile({
       onOpenQuickJot={onOpenQuickJot}
       activeTileLabel={activeTileLabel}
       onFocusActiveTile={activeTileId ? onFocusActiveTile : undefined}
+      loopBar={loopBar}
     />
   );
 }
+
+export type GridMember = { id: string; email: string; displayName: string };
 
 interface GridWorkspaceProps {
   initialGrids: GridInfo[];
@@ -67,6 +85,7 @@ interface GridWorkspaceProps {
   userId: string;
   userEmail: string;
   userIsAdmin?: boolean;
+  gridMembers?: GridMember[];
 }
 
 export function GridWorkspace({
@@ -75,6 +94,7 @@ export function GridWorkspace({
   userId,
   userEmail,
   userIsAdmin = false,
+  gridMembers = [],
 }: GridWorkspaceProps) {
   const router = useRouter();
   const [grids, setGrids] = useState<GridInfo[]>(initialGrids);
@@ -93,11 +113,63 @@ export function GridWorkspace({
   const [manageGroupName, setManageGroupName] = useState("");
   const [showDMModal, setShowDMModal] = useState(false);
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "channel">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "channel" | "dm">("grid");
+  const [selectedDMTile, setSelectedDMTile] = useState<{
+    id: string;
+    conversationId: string;
+    conversationName: string;
+    onGrid: boolean;
+    gridId: string;
+  } | null>(null);
+  const [dmTiles, setDmTiles] = useState<{ id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }[]>([]);
   const [focusMode, setFocusMode] = useState(false);
   const [fluxOpen, setFluxOpen] = useState(false);
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const [joinedLoopRoom, setJoinedLoopRoom] = useState<{ tileId: string; roomLabel: string } | null>(null);
+  const [loopBarMuted, setLoopBarMuted] = useState(false);
+  const joinedLoopRoomRef = useRef(joinedLoopRoom);
+  joinedLoopRoomRef.current = joinedLoopRoom;
   const { isMobile } = useMediaQuery();
+
+  useEffect(() => {
+    const onJoined = (e: Event) => {
+      const d = (e as CustomEvent).detail as { tileId: string; roomLabel: string };
+      setJoinedLoopRoom({ tileId: d.tileId, roomLabel: d.roomLabel });
+      setLoopBarMuted(false);
+    };
+    const onLeft = (e: Event) => {
+      const d = (e as CustomEvent).detail as { tileId: string };
+      setJoinedLoopRoom((prev) => (prev?.tileId === d.tileId ? null : prev));
+    };
+    const onMuteState = (e: Event) => {
+      const d = (e as CustomEvent).detail as { tileId: string; muted: boolean };
+      if (joinedLoopRoomRef.current?.tileId === d.tileId) setLoopBarMuted(d.muted);
+    };
+    window.addEventListener("klyr-loop-joined", onJoined);
+    window.addEventListener("klyr-loop-left", onLeft);
+    window.addEventListener("klyr-loop-mute-state", onMuteState);
+    return () => {
+      window.removeEventListener("klyr-loop-joined", onJoined);
+      window.removeEventListener("klyr-loop-left", onLeft);
+      window.removeEventListener("klyr-loop-mute-state", onMuteState);
+    };
+  }, []);
+
+  const refreshDMs = async () => {
+    try {
+      const res = await fetch("/api/tiles/dms");
+      if (res.ok) {
+        const data = await res.json();
+        setDmTiles(data.dms ?? []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch DMs:", e);
+    }
+  };
+
+  useEffect(() => {
+    refreshDMs();
+  }, []);
 
   const refreshChannels = async () => {
     try {
@@ -298,24 +370,54 @@ export function GridWorkspace({
           type: "dm",
           conversationId,
           conversationName,
+          onGrid: false,
         }),
       });
       if (res.ok) {
+        const data = await res.json();
         setShowDMModal(false);
-        router.refresh();
-        toast("DM tile added to grid");
+        setSelectedDMTile({
+          id: data.tile.id,
+          conversationId,
+          conversationName,
+          onGrid: false,
+          gridId: currentGrid.id,
+        });
+        setViewMode("dm");
+        refreshDMs();
+        toast("DM opened in panel");
       } else {
-        toast("Failed to add DM tile");
+        toast("Failed to start DM");
       }
     } catch (error) {
-      console.error("Failed to add DM tile:", error);
-      toast("Failed to add DM tile");
+      console.error("Failed to start DM:", error);
+      toast("Failed to start DM");
     }
   };
 
   const handleChannelSelect = (channelId: string) => {
     setCurrentChannelId(channelId);
     setViewMode("channel");
+  };
+
+  const handleSelectDM = (dm: { id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }) => {
+    setSelectedDMTile({
+      id: dm.id,
+      conversationId: dm.conversationId ?? "",
+      conversationName: dm.conversationName,
+      onGrid: dm.onGrid,
+      gridId: dm.gridId,
+    });
+    setViewMode("dm");
+  };
+
+  const handleDMAddToGrid = () => {
+    refreshDMs();
+    router.refresh();
+    if (selectedDMTile) {
+      setSelectedDMTile((prev) => (prev ? { ...prev, onGrid: true } : null));
+    }
+    toast("DM added to grid");
   };
 
   const handleAddMembers = async (emails: string[]) => {
@@ -338,7 +440,7 @@ export function GridWorkspace({
     }
   };
 
-  if (!currentGrid) {
+  if (!currentGrid && !selectedDMTile) {
     return (
       <div className="flex h-screen">
       <Sidebar
@@ -364,6 +466,9 @@ export function GridWorkspace({
           setManageGroupName(name);
         }}
         onStartDM={() => toast("Select a grid first")}
+        dmTiles={dmTiles}
+        currentDMTileId={null}
+        onSelectDM={handleSelectDM}
         hasGrid={false}
         userEmail={userEmail}
         onOpenThemeCustomizer={() => setShowThemeCustomizer(true)}
@@ -411,13 +516,14 @@ export function GridWorkspace({
         >
           <Sidebar
             grids={grids}
-            currentGridId={viewMode === "grid" ? currentGrid.id : ""}
+            currentGridId={viewMode === "grid" && currentGrid ? currentGrid.id : ""}
             onGridSelect={(id) => {
               handleGridSelect(id);
               setViewMode("grid");
             }}
             onCreateGrid={handleCreateGrid}
             onRenameGrid={handleRenameGrid}
+            onIconChange={handleIconChange}
             onShareGrid={handleShareGrid}
             channels={channels}
             channelGroups={channelGroups}
@@ -431,6 +537,9 @@ export function GridWorkspace({
               setManageGroupName(name);
             }}
             onStartDM={() => setShowDMModal(true)}
+            dmTiles={dmTiles}
+            currentDMTileId={selectedDMTile?.id ?? null}
+            onSelectDM={handleSelectDM}
             hasGrid={!!currentGrid}
             userEmail={userEmail}
             onOpenThemeCustomizer={() => setShowThemeCustomizer(true)}
@@ -441,7 +550,7 @@ export function GridWorkspace({
       {isMobile && sidebarOpenMobile && (
         <Sidebar
           grids={grids}
-          currentGridId={viewMode === "grid" ? currentGrid.id : ""}
+          currentGridId={viewMode === "grid" && currentGrid ? currentGrid.id : ""}
           onGridSelect={(id) => {
             handleGridSelect(id);
             setViewMode("grid");
@@ -464,6 +573,9 @@ export function GridWorkspace({
             setManageGroupName(name);
           }}
           onStartDM={() => setShowDMModal(true)}
+          dmTiles={dmTiles}
+          currentDMTileId={selectedDMTile?.id ?? null}
+          onSelectDM={handleSelectDM}
           hasGrid={!!currentGrid}
           userEmail={userEmail}
           onOpenThemeCustomizer={() => setShowThemeCustomizer(true)}
@@ -534,7 +646,7 @@ export function GridWorkspace({
           onAdd={handleAddMembers}
         />
       )}
-      {viewMode === "grid" ? (
+      {viewMode === "grid" && currentGrid ? (
         <ActiveGridProvider
           gridId={currentGrid.id}
           gridName={currentGrid.name}
@@ -556,6 +668,7 @@ export function GridWorkspace({
               gridName={currentGrid.name}
               userEmail={userEmail}
               grids={grids}
+              gridMembers={gridMembers}
               onGridSelect={(id) => {
                 handleGridSelect(id);
                 setViewMode("grid");
@@ -567,6 +680,8 @@ export function GridWorkspace({
             />
             <DockWithActiveTile
               currentGrid={currentGrid}
+              joinedLoopRoom={joinedLoopRoom}
+              loopBarMuted={loopBarMuted}
               onOpenFlux={() => setFluxOpen(true)}
               onOpenLens={() => {}}
               onOpenNotifications={() => {}}
@@ -586,6 +701,20 @@ export function GridWorkspace({
             )}
           </ActiveTileProvider>
         </ActiveGridProvider>
+      ) : viewMode === "dm" && selectedDMTile ? (
+        <DMView
+          tileId={selectedDMTile.id}
+          conversationId={selectedDMTile.conversationId}
+          conversationName={selectedDMTile.conversationName}
+          onGrid={selectedDMTile.onGrid}
+          gridId={selectedDMTile.gridId}
+          onAddToGrid={handleDMAddToGrid}
+          userEmail={userEmail}
+        />
+      ) : viewMode === "grid" && !currentGrid ? (
+        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <p className="text-gray-600 dark:text-gray-400">Select a grid from the sidebar</p>
+        </div>
       ) : currentChannelId ? (
         <ChannelView
           channelId={currentChannelId}

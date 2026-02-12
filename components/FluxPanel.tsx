@@ -5,6 +5,7 @@ import { getStoredOpenAIKey } from "@/lib/settings";
 import {
   gatherGridContent,
   getOverdueTasks,
+  getFocusContent,
   suggestTilesForGrid,
   since24h,
   sinceYesterday,
@@ -18,7 +19,7 @@ export interface FluxPanelProps {
   onOpenSettings: () => void;
 }
 
-type Action = "idle" | "summarize" | "overdue" | "suggest" | "changed";
+type Action = "idle" | "summarize" | "overdue" | "suggest" | "changed" | "focus";
 
 export function FluxPanel({
   gridId,
@@ -138,11 +139,47 @@ export function FluxPanel({
     setAction("idle");
   };
 
+  const runFocus = async () => {
+    setAction("focus");
+    setError(null);
+    setOutput(null);
+    if (!hasKey) {
+      setError("Add an API key in Settings to enable Flux focus.");
+      setAction("idle");
+      return;
+    }
+    try {
+      const content = await getFocusContent(gridId);
+      const res = await fetch("/api/grid/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentForSummary: content,
+          periodLabel: "focus",
+          promptType: "focus",
+          openaiApiKey: getStoredOpenAIKey()?.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to generate focus");
+        setAction("idle");
+        return;
+      }
+      setOutput(data.summary ?? "");
+    } catch (e) {
+      setError("Something went wrong");
+      console.error(e);
+    }
+    setAction("idle");
+  };
+
   const loading =
     action === "summarize" ||
     action === "overdue" ||
     action === "suggest" ||
-    action === "changed";
+    action === "changed" ||
+    action === "focus";
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -206,6 +243,14 @@ export function FluxPanel({
         )}
 
         <div className="grid grid-cols-1 gap-2">
+          <button
+            type="button"
+            onClick={runFocus}
+            disabled={loading}
+            className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 rounded-xl transition-colors disabled:opacity-50"
+          >
+            What should I focus on today?
+          </button>
           <button
             type="button"
             onClick={runSummarize}
