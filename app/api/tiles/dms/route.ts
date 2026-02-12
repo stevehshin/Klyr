@@ -12,11 +12,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const grids = await prisma.grid.findMany({
-    where: { ownerId: session.userId },
-    select: { id: true, name: true },
+  // Grids the user can see: owned + shared with them
+  const [ownedGrids, sharedGrids] = await Promise.all([
+    prisma.grid.findMany({
+      where: { ownerId: session.userId },
+      select: { id: true, name: true },
+    }),
+    prisma.gridShare.findMany({
+      where: { userId: session.userId },
+      select: { gridId: true, grid: { select: { id: true, name: true } } },
+    }),
+  ]);
+  const gridById = new Map(ownedGrids.map((g) => [g.id, g]));
+  sharedGrids.forEach((s) => {
+    if (s.grid && !gridById.has(s.grid.id)) gridById.set(s.grid.id, s.grid);
   });
-  const gridIds = grids.map((g) => g.id);
+  const gridIds = Array.from(gridById.keys());
+  const grids = Array.from(gridById.values());
 
   const tiles = await prisma.tile.findMany({
     where: {

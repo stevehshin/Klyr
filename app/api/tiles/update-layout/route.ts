@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canEditGrid } from "@/lib/gridAuth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,17 +20,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update each tile's position and size
+    for (const tile of tiles as { id: string }[]) {
+      const t = await prisma.tile.findUnique({ where: { id: tile.id }, select: { gridId: true } });
+      if (!t || !(await canEditGrid(session.userId, t.gridId))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     await Promise.all(
-      tiles.map((tile: { id: string; x: number; y: number; w: number; h: number }) =>
+      (tiles as { id: string; x: number; y: number; w: number; h: number }[]).map((tile) =>
         prisma.tile.update({
           where: { id: tile.id },
-          data: {
-            x: tile.x,
-            y: tile.y,
-            w: tile.w,
-            h: tile.h,
-          },
+          data: { x: tile.x, y: tile.y, w: tile.w, h: tile.h },
         })
       )
     );

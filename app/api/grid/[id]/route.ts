@@ -17,7 +17,10 @@ export async function GET(
     const grid = await prisma.grid.findFirst({
       where: {
         id,
-        ownerId: session.userId,
+        OR: [
+          { ownerId: session.userId },
+          { sharedWith: { some: { userId: session.userId } } },
+        ],
       },
       include: {
         tiles: {

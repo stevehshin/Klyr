@@ -8,6 +8,8 @@ export interface GridInfo {
   name: string;
   icon?: string | null;
   createdAt: string;
+  /** false when grid is shared with the user (they are not the owner) */
+  isOwner?: boolean;
 }
 
 export interface ChannelInfo {
@@ -199,6 +201,7 @@ export function Sidebar({
                         {grid.icon && grid.icon.trim() ? grid.icon.trim() : grid.name.charAt(0).toUpperCase()}
                       </span>
                       <span className="truncate text-sm font-medium">{grid.name}</span>
+                      {grid.isOwner === false && <span className="text-xs opacity-75">(Shared)</span>}
                     </button>
                   ))}
                 </div>
@@ -458,6 +461,9 @@ export function Sidebar({
                           {grid.icon && grid.icon.trim() ? grid.icon.trim() : grid.name.charAt(0).toUpperCase()}
                         </span>
                         <span className="truncate text-sm font-medium">{grid.name}</span>
+                        {grid.isOwner === false && (
+                          <span className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400" title="Shared with you">(Shared)</span>
+                        )}
                       </div>
                       {grid.id === currentGridId && (
                         <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -467,8 +473,8 @@ export function Sidebar({
                     </button>
                   )}
                   
-                  {/* Context menu */}
-                  {grid.id === currentGridId && !editingGridId && (
+                  {/* Context menu: only for grids you own */}
+                  {grid.id === currentGridId && !editingGridId && grid.isOwner !== false && (
                     <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {onIconChange && (
                         <div className="relative">

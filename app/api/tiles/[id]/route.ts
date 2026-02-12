@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canEditGrid } from "@/lib/gridAuth";
 
 /**
  * PATCH /api/tiles/[id] — Update a tile (e.g. onGrid for "Add to grid", or position).
- * User must own the grid the tile belongs to.
+ * User must own the grid or have edit permission (GridShare).
  */
 export async function PATCH(
   request: NextRequest,
@@ -20,9 +21,13 @@ export async function PATCH(
 
   const tile = await prisma.tile.findUnique({
     where: { id: tileId },
-    include: { grid: { select: { ownerId: true } } },
+    include: { grid: { select: { id: true, ownerId: true } } },
   });
-  if (!tile || tile.grid.ownerId !== session.userId) {
+  if (!tile) {
+    return NextResponse.json({ error: "Tile not found" }, { status: 404 });
+  }
+  const canEdit = await canEditGrid(session.userId, tile.grid.id);
+  if (!canEdit) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

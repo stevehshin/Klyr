@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canViewGrid } from "@/lib/gridAuth";
+
+async function canAccessTile(tileId: string, userId: string): Promise<boolean> {
+  const tile = await prisma.tile.findUnique({
+    where: { id: tileId },
+    select: { gridId: true },
+  });
+  if (!tile) return false;
+  return canViewGrid(userId, tile.gridId);
+}
 
 // GET /api/messages?tileId=...
 export async function GET(request: NextRequest) {
@@ -20,7 +30,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch messages for this tile
+    if (!(await canAccessTile(tileId, session.userId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const messages = await prisma.message.findMany({
       where: { tileId },
       include: { user: { select: { email: true } } },
@@ -53,6 +66,10 @@ export async function POST(request: NextRequest) {
         { error: "Tile ID and encrypted content are required" },
         { status: 400 }
       );
+    }
+
+    if (!(await canAccessTile(tileId, session.userId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Create message (already encrypted client-side)

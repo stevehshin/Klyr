@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canEditGrid } from "@/lib/gridAuth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +20,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update tile to hidden
+    const tile = await prisma.tile.findUnique({ where: { id: tileId }, select: { gridId: true } });
+    if (!tile || !(await canEditGrid(session.userId, tile.gridId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await prisma.tile.update({
       where: { id: tileId },
       data: { hidden: true },

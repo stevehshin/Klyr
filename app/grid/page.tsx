@@ -15,7 +15,7 @@ export default async function GridPage({
     redirect("/login");
   }
 
-  // Fetch user and all their grids
+  // Fetch user and all grids they can access (owned + shared with them)
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: {
@@ -31,6 +31,18 @@ export default async function GridPage({
           createdAt: true,
         },
       },
+      sharedGrids: {
+        select: {
+          grid: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -38,18 +50,44 @@ export default async function GridPage({
     redirect("/login");
   }
 
+  // Build combined grid list: owned first (with isOwner true), then shared (with isOwner false)
+  const ownedGrids = user.grids.map((g) => ({
+    id: g.id,
+    name: g.name,
+    icon: g.icon,
+    createdAt: g.createdAt.toISOString(),
+    isOwner: true as boolean,
+  }));
+  const sharedGridIds = new Set(ownedGrids.map((g) => g.id));
+  const sharedGrids = (user.sharedGrids ?? [])
+    .map((s) => s.grid)
+    .filter((g) => g && !sharedGridIds.has(g.id))
+    .map((g) => ({
+      id: g!.id,
+      name: g!.name,
+      icon: g!.icon,
+      createdAt: g!.createdAt.toISOString(),
+      isOwner: false as boolean,
+    }));
+  const allGrids = [...ownedGrids, ...sharedGrids];
+  const firstGridId = allGrids[0]?.id;
+
   // Await searchParams before accessing properties (Next.js 15 requirement)
   const params = await searchParams;
   
-  // Get the requested grid ID or the first grid
-  const gridId = params.id || user.grids[0]?.id;
+  // Get the requested grid ID or the first grid the user can access
+  const gridId = params.id || firstGridId;
 
   let currentGrid = null;
   if (gridId) {
+    // Load grid if user owns it OR has a share (view/edit)
     const gridData = await prisma.grid.findFirst({
       where: {
         id: gridId,
-        ownerId: user.id,
+        OR: [
+          { ownerId: user.id },
+          { sharedWith: { some: { userId: user.id } } },
+        ],
       },
       include: {
         tiles: {
@@ -133,13 +171,8 @@ export default async function GridPage({
     }
   }
 
-  // Serialize grids for client (GridInfo expects createdAt as string)
-  const initialGrids = user.grids.map((g) => ({
-    id: g.id,
-    name: g.name,
-    icon: g.icon,
-    createdAt: g.createdAt.toISOString(),
-  }));
+  // Serialize grids for client (owned + shared; isOwner so sidebar can hide Share/Rename for shared)
+  const initialGrids = allGrids;
 
   const gridMembers = currentGrid && "gridMembers" in currentGrid ? (currentGrid as { gridMembers?: { id: string; email: string; displayName: string }[] }).gridMembers ?? [] : [];
 

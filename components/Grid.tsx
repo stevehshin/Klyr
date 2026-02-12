@@ -42,6 +42,7 @@ export interface TileData {
 export interface GridInfo {
   id: string;
   name: string;
+  isOwner?: boolean;
 }
 
 export type GridMember = { id: string; email: string; displayName: string };
