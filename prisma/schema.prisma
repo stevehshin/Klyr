@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                         String           @id @default(cuid())
+  email                      String           @unique
+  passwordHash               String
+  createdAt                  DateTime         @default(now())
+  googleCalendarRefreshToken String?
+  grids                      Grid[]
+  sharedGrids                GridShare[]
+  ownedChannels              Channel[]
+  channelGroups              ChannelGroup[]
+  channelMemberships         ChannelMember[]
+  channelMessages            ChannelMessage[]
+  messages                   Message[]
+}
+
+model Grid {
+  id          String       @id @default(cuid())
+  name        String       @default("Untitled Grid")
+  icon        String?      // emoji or single character for sidebar
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tiles       Tile[]
+  sharedWith  GridShare[]
+  createdAt   DateTime     @default(now())
+  
+  @@index([ownerId])
+}
+
+model GridShare {
+  id          String   @id @default(cuid())
+  gridId      String
+  grid        Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission  String   @default("view") // "view" or "edit"
+  createdAt   DateTime @default(now())
+  
+  @@unique([gridId, userId])
+  @@index([userId])
+}
+
+model Tile {
+  id             String    @id @default(cuid())
+  gridId         String
+  grid           Grid      @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  type           String    // "notes", "dm", "channel", "tasks", "links", "calendar"
+  x              Int
+  y              Int
+  w              Int
+  h              Int
+  hidden         Boolean   @default(false)
+  channelId      String?   // For channel tiles and channel call tiles
+  channel        Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  conversationId String?   // For DM tiles and DM call tiles
+  callRoomLabel  String?   // For call tiles - display label (e.g. "Grid call", "#general")
+  messages       Message[]
+  createdAt      DateTime  @default(now())
+  
+  @@index([channelId])
+}
+
+model Message {
+  id               String   @id @default(cuid())
+  tileId           String
+  tile             Tile     @relation(fields: [tileId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  encryptedContent String   // Client-side encrypted message
+  createdAt        DateTime @default(now())
+
+  @@index([tileId])
+}
+
+model Channel {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  emoji          String         @default("📢")
+  isPrivate      Boolean        @default(false)
+  ownerId        String
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  channelGroupId String?
+  channelGroup   ChannelGroup?  @relation(fields: [channelGroupId], references: [id], onDelete: SetNull)
+  members        ChannelMember[]
+  messages       ChannelMessage[]
+  tiles          Tile[]
+  createdAt      DateTime       @default(now())
+
+  @@index([ownerId])
+  @@index([channelGroupId])
+}
+
+model ChannelGroup {
+  id        String    @id @default(cuid())
+  name      String
+  order     Int       @default(0)
+  ownerId   String
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  channels  Channel[]
+
+  @@index([ownerId])
+}
+
+model ChannelMember {
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // "owner", "admin", "member"
+  joinedAt  DateTime @default(now())
+  
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model ChannelMessage {
+  id               String   @id @default(cuid())
+  channelId        String
+  channel          Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedContent String   // Client-side encrypted message
+  createdAt        DateTime @default(now())
+  
+  @@index([channelId])
+  @@index([userId])
+}
