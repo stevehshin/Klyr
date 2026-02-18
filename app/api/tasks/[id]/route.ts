@@ -50,7 +50,7 @@ export async function PATCH(
     if (typeof title === "string" && title.trim()) data.title = title.trim();
     if (description !== undefined)
       data.description = typeof description === "string" ? description.trim() || null : null;
-    if (["BACKLOG", "IN_PROGRESS", "BLOCKED", "DONE"].includes(status)) data.status = status;
+    if (typeof status === "string" && status.trim()) data.status = status.trim().slice(0, 64);
     if (["LOW", "MEDIUM", "HIGH"].includes(priority)) data.priority = priority;
     if (dueAt !== undefined) data.dueAt = dueAt ? new Date(dueAt) : null;
     if (assigneeUserId !== undefined) data.assigneeUserId = assigneeUserId || null;

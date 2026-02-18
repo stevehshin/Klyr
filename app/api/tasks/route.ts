@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
         { createdByUserId: session.userId },
       ],
     };
-    if (status && ["BACKLOG", "IN_PROGRESS", "BLOCKED", "DONE"].includes(status)) {
-      where.status = status;
+    if (status && typeof status === "string" && status.trim()) {
+      where.status = status.trim().slice(0, 64);
     }
     if (assigneeUserId !== null && assigneeUserId !== undefined && assigneeUserId !== "") {
       if (assigneeUserId === "__unassigned__") {
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const vis = visibility === "PRIVATE" ? "PRIVATE" : "SHARED";
-    const st = ["BACKLOG", "IN_PROGRESS", "BLOCKED", "DONE"].includes(status) ? status : "BACKLOG";
+    const st = (typeof status === "string" && status.trim()) ? status.trim().slice(0, 64) : "BACKLOG";
     const pri = ["LOW", "MEDIUM", "HIGH"].includes(priority) ? priority : "MEDIUM";
     const task = await prisma.task.create({
       data: {
