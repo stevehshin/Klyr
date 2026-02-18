@@ -507,6 +507,7 @@ export function Grid({
           <LoopRoomTile
             tileId={tile.id}
             roomLabel={tile.roomLabel ?? "Loop room"}
+            userEmail={userEmail ?? undefined}
             onClose={() => handleCloseTile(tile.id)}
           />
         );

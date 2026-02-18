@@ -6,13 +6,15 @@ export function CallLobbyView({
   roomLabel,
   onJoin,
   error,
+  defaultAudioOnly = true,
 }: {
   roomLabel: string;
   onJoin: (displayName: string, audioOnly: boolean) => void;
   error: string | null;
+  defaultAudioOnly?: boolean;
 }) {
   const [displayName, setDisplayName] = useState("");
-  const [audioOnly, setAudioOnly] = useState(true);
+  const [audioOnly, setAudioOnly] = useState(defaultAudioOnly);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

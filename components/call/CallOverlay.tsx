@@ -1,20 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCall } from "@/lib/call/use-call";
 import { CallLobbyView } from "./CallLobbyView";
 import { CallParticipantGrid } from "./CallParticipantGrid";
 import { CallControlBar } from "./CallControlBar";
 import type { CallStateData } from "@/lib/call/call-state";
 
+const LOOP_JOINED_KEY = "klyr-loop-joined";
+
+function notifyLoopLeft(roomId: string, roomLabel: string) {
+  try {
+    const raw = localStorage.getItem(LOOP_JOINED_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    localStorage.setItem(LOOP_JOINED_KEY, JSON.stringify(ids.filter((id) => id !== roomId)));
+  } catch {}
+  if (typeof window !== "undefined" && window.opener) {
+    window.opener.dispatchEvent(
+      new CustomEvent("klyr-loop-left", { detail: { tileId: roomId, roomLabel } })
+    );
+  }
+}
+
 export interface CallOverlayProps {
   roomId: string;
   roomLabel: string;
   userEmail?: string;
+  defaultAudioOnly?: boolean;
+  isLoopRoom?: boolean;
   onClose: () => void;
 }
 
-export function CallOverlay({ roomId, roomLabel, userEmail, onClose }: CallOverlayProps) {
+export function CallOverlay({
+  roomId,
+  roomLabel,
+  userEmail,
+  defaultAudioOnly = false,
+  isLoopRoom = false,
+  onClose,
+}: CallOverlayProps) {
   const [toast, setToast] = useState<string | null>(null);
 
   const { data, join, leave, toggleMute, toggleVideo, toggleScreenShare } = useCall({
@@ -22,7 +46,15 @@ export function CallOverlay({ roomId, roomLabel, userEmail, onClose }: CallOverl
     onToast: setToast,
   });
 
+  useEffect(() => {
+    if (!isLoopRoom) return;
+    const onBeforeUnload = () => notifyLoopLeft(roomId, roomLabel);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isLoopRoom, roomId, roomLabel]);
+
   const handleLeave = () => {
+    if (isLoopRoom) notifyLoopLeft(roomId, roomLabel);
     leave();
     onClose();
   };
@@ -51,7 +83,12 @@ export function CallOverlay({ roomId, roomLabel, userEmail, onClose }: CallOverl
       )}
 
       {data.state === "lobby" || data.state === "ended" ? (
-        <CallLobbyView roomLabel={roomLabel} onJoin={(name, audioOnly) => join(name, audioOnly)} error={data.error} />
+        <CallLobbyView
+          roomLabel={roomLabel}
+          onJoin={(name, audioOnly) => join(name, audioOnly)}
+          error={data.error}
+          defaultAudioOnly={defaultAudioOnly}
+        />
       ) : data.state === "joining" ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-[var(--call-muted)]">Joining…</p>

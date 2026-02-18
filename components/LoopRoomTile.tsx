@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { openCallInNewWindow } from "@/lib/call/open-call-window";
 
 const LOOP_JOINED_KEY = "klyr-loop-joined";
 
 export interface LoopRoomTileProps {
   tileId: string;
   roomLabel: string;
+  userEmail?: string;
   onClose: () => void;
 }
 
-export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) {
+export function LoopRoomTile({ tileId, roomLabel, userEmail, onClose }: LoopRoomTileProps) {
   const [joined, setJoined] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [presenceCount, setPresenceCount] = useState(0); // Mock: no real presence yet
 
   useEffect(() => {
     try {
@@ -28,7 +29,6 @@ export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) 
   const handleLeave = useCallback(() => {
     setJoined(false);
     setMuted(false);
-    setPresenceCount((c) => Math.max(0, c - 1));
     try {
       const raw = localStorage.getItem(LOOP_JOINED_KEY);
       const ids: Array<string> = raw ? JSON.parse(raw) : [];
@@ -44,7 +44,14 @@ export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) 
     };
     const onMute = (e: Event) => {
       const d = (e as CustomEvent).detail as { tileId: string };
-      if (d.tileId === tileId) setMuted((m) => { const next = !m; window.dispatchEvent(new CustomEvent("klyr-loop-mute-state", { detail: { tileId, muted: next } })); return next; });
+      if (d.tileId === tileId)
+        setMuted((m) => {
+          const next = !m;
+          window.dispatchEvent(
+            new CustomEvent("klyr-loop-mute-state", { detail: { tileId, muted: next } })
+          );
+          return next;
+        });
     };
     window.addEventListener("klyr-loop-left", onLeft);
     window.addEventListener("klyr-loop-mute", onMute);
@@ -55,8 +62,8 @@ export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) 
   }, [tileId, handleLeave]);
 
   const handleJoin = () => {
+    openCallInNewWindow(tileId, roomLabel, userEmail, { audioOnly: true, loopRoom: true });
     setJoined(true);
-    setPresenceCount((c) => c + 1);
     try {
       const raw = localStorage.getItem(LOOP_JOINED_KEY);
       const ids: string[] = raw ? JSON.parse(raw) : [];
@@ -73,7 +80,7 @@ export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) 
         <div className="flex items-center gap-2">
           <span className="text-lg" aria-hidden>🎙</span>
           <h3 className="font-semibold text-gray-900 dark:text-white truncate">{roomLabel}</h3>
-          <span className="text-xs text-gray-500 dark:text-gray-400">E2E</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Voice</span>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -117,11 +124,9 @@ export function LoopRoomTile({ tileId, roomLabel, onClose }: LoopRoomTileProps) 
                 Leave
               </button>
             </div>
-            {presenceCount > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {presenceCount} in room (mock)
-              </p>
-            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Voice in the call window. Use the dock to mute or leave.
+            </p>
           </>
         )}
       </div>

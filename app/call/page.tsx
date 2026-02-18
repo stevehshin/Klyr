@@ -9,6 +9,8 @@ function CallPageContent() {
   const roomId = searchParams.get("roomId") || "";
   const roomLabel = searchParams.get("roomLabel") || "Call";
   const userEmail = searchParams.get("userEmail") || undefined;
+  const defaultAudioOnly = searchParams.get("audioOnly") === "1";
+  const isLoopRoom = searchParams.get("loopRoom") === "1";
 
   if (!roomId) {
     return (
@@ -23,6 +25,8 @@ function CallPageContent() {
       roomId={roomId}
       roomLabel={roomLabel}
       userEmail={userEmail}
+      defaultAudioOnly={defaultAudioOnly}
+      isLoopRoom={isLoopRoom}
       onClose={() => window.close()}
     />
   );
