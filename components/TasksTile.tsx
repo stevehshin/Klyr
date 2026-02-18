@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { encryptMessage, decryptMessage } from "@/lib/crypto";
 import type { GridMember } from "./Grid";
 
@@ -502,21 +503,24 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
         )}
       </div>
 
-      {showNewTaskModal && (
-        <NewTaskModal
-          gridId={gridId}
-          userId={userId}
-          gridMembers={gridMembers}
-          extraMembers={extraMembers}
-          setExtraMembers={setExtraMembers}
-          projects={projects}
-          boardConfig={boardConfig}
-          createTask={createTask}
-          inviteToGrid={inviteToGrid}
-          onClose={() => setShowNewTaskModal(false)}
-          getColumnLabel={(s) => getColumnLabel(s, boardConfig)}
-        />
-      )}
+      {showNewTaskModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <NewTaskModal
+            gridId={gridId}
+            userId={userId}
+            gridMembers={gridMembers}
+            extraMembers={extraMembers}
+            setExtraMembers={setExtraMembers}
+            projects={projects}
+            boardConfig={boardConfig}
+            createTask={createTask}
+            inviteToGrid={inviteToGrid}
+            onClose={() => setShowNewTaskModal(false)}
+            getColumnLabel={(s) => getColumnLabel(s, boardConfig)}
+          />,
+          document.body
+        )}
 
       {detailTaskId && (
         <TaskDetailDrawer
@@ -918,7 +922,7 @@ function NewTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
         className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
