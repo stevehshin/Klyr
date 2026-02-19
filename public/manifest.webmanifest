@@ -1,0 +1,18 @@
+{
+  "name": "Klyr - Privacy-First Workspace",
+  "short_name": "Klyr",
+  "description": "A calm, tile-based workspace with end-to-end encryption",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/klyr-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

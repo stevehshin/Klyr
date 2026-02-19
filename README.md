@@ -44,6 +44,24 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Install on your phone (PWA)
+
+Klyr is a Progressive Web App. Your friends (and you) can install it on an iPhone or Android phone and use it like a native app.
+
+**iPhone (Safari):**
+1. Open Klyr in **Safari** (e.g. `https://your-klyr-url.com`).
+2. Tap the **Share** button (square with arrow).
+3. Tap **Add to Home Screen**.
+4. Name it "Klyr" and tap **Add**.
+
+The Klyr icon will appear on the home screen. Opening it launches the app in a full-screen window (no Safari UI).
+
+**Android (Chrome):**
+1. Open Klyr in Chrome.
+2. Tap the menu (⋮) → **Install app** or **Add to Home screen** (browser may show an install banner).
+
+**Note:** The app must be served over **HTTPS** for "Add to Home Screen" to work. Local development (`http://localhost`) works for testing install on the same machine.
+
 ## Project Structure
 
 ```

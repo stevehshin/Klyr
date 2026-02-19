@@ -529,11 +529,14 @@ export function Grid({
     <>
       <ActiveTileKeyboard />
       <div className="h-screen w-full overflow-hidden flex flex-col bg-[var(--background)]">
-        {/* OS Control Layer — [☰] [Grid ▼] [Share] [Focus] [Add] [⋮] */}
+        {/* OS Control Layer — [Logo] [☰] [Grid ▼] [Share] [Focus] [Add] [⋮] */}
         <header
         className="relative z-30 flex-shrink-0 border-b border-gray-200/60 dark:border-white/5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3"
         style={{ transition: "border-color var(--motion-duration) var(--motion-ease)" }}
       >
+        <a href="/grid" className="flex-shrink-0 flex items-center gap-1.5 mr-1" aria-label="Klyr home">
+          <img src="/klyr-logo.png" alt="" className="h-7 w-auto object-contain dark:invert" />
+        </a>
         {onOpenSidebar && (
           <button
             type="button"
