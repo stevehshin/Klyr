@@ -8,281 +8,244 @@ export interface CalendarTileProps {
   onClose: () => void;
 }
 
-interface CalendarEvent {
+interface GridCalendarEvent {
   id: string;
-  summary: string;
-  start: string;
-  end: string;
-  allDay?: boolean;
-  htmlLink?: string;
+  gridId: string;
+  title: string;
+  description: string | null;
+  startAt: string;
+  endAt: string;
+  isAllDay: boolean;
+  color: string | null;
+  createdByUserId: string | null;
+  createdBy?: { id: string; email: string } | null;
 }
 
-function toISO(date: Date): string {
-  return date.toISOString().split("T")[0];
+interface TaskWithDue {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  priority: string;
+  status?: string;
 }
+
+type CalendarItem =
+  | { type: "event"; id: string; title: string; startAt: Date; endAt: Date; isAllDay: boolean; color: string; description?: string | null; event: GridCalendarEvent }
+  | { type: "task"; id: string; title: string; startAt: Date; endAt: Date; isAllDay: true; color: string; taskId: string; priority: string };
+
+const EVENT_COLORS = ["#2563EB", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0d9488", "#ea580c"];
+const TASK_PRIORITY_COLOR: Record<string, string> = { HIGH: "#dc2626", MEDIUM: "#2563EB", LOW: "#6b7280" };
 
 function getMonthRange(year: number, month: number) {
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
-  return {
-    timeMin: start.toISOString(),
-    timeMax: end.toISOString(),
-  };
+  return { timeMin: start.toISOString(), timeMax: end.toISOString() };
 }
 
-function isSameDay(d: Date, year: number, month: number, day: number) {
-  return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+function dateKey(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-export function CalendarTile({ tileId, gridId, onClose }: CalendarTileProps) {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
+/** Returns true if the item touches the given day (for multi-day or single day). */
+function itemTouchesDay(item: CalendarItem, year: number, month: number, day: number): boolean {
+  const dayStart = new Date(year, month, day, 0, 0, 0, 0);
+  const dayEnd = new Date(year, month, day, 23, 59, 59, 999);
+  return item.startAt <= dayEnd && item.endAt >= dayStart;
+}
+
+export function CalendarTile({ gridId, onClose }: CalendarTileProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  const [events, setEvents] = useState<GridCalendarEvent[]>([]);
+  const [tasks, setTasks] = useState<TaskWithDue[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [connectMessage, setConnectMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<GridCalendarEvent | null>(null);
+  const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
 
-  const checkStatus = useCallback(async () => {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const { timeMin, timeMax } = getMonthRange(year, month);
+
+  const fetchData = useCallback(async () => {
+    if (!gridId) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/calendar/status");
-      const data = await res.json();
-      if (res.ok) setConnected(!!data.connected);
-      else setConnected(false);
-    } catch {
-      setConnected(false);
+      const [eventsRes, tasksRes] = await Promise.all([
+        fetch(`/api/grid/calendar?gridId=${encodeURIComponent(gridId)}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`),
+        fetch(`/api/tasks?gridId=${encodeURIComponent(gridId)}`),
+      ]);
+      const eventsData = await eventsRes.json();
+      const tasksData = await tasksRes.json();
+      if (!eventsRes.ok) throw new Error(eventsData.error || "Failed to load events");
+      setEvents(eventsData.events ?? []);
+      const allTasks: TaskWithDue[] = tasksData.tasks ?? [];
+      const monthStart = new Date(timeMin).getTime();
+      const monthEnd = new Date(timeMax).getTime();
+      setTasks(
+        allTasks.filter((t: TaskWithDue) => {
+          if (!t.dueAt) return false;
+          const due = new Date(t.dueAt).getTime();
+          return due >= monthStart && due <= monthEnd;
+        })
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load calendar");
+      setEvents([]);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [gridId, timeMin, timeMax]);
 
   useEffect(() => {
-    checkStatus();
-  }, [checkStatus]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
-    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    if (params?.get("calendar") === "connected") {
-      setConnectMessage("Google Calendar connected!");
-      checkStatus();
-      if (typeof window !== "undefined") {
-        const u = new URL(window.location.href);
-        u.searchParams.delete("calendar");
-        window.history.replaceState({}, "", u.toString());
-      }
-    }
-  }, [checkStatus]);
-
-  useEffect(() => {
-    if (!connectMessage) return;
-    const t = setTimeout(() => setConnectMessage(null), 4000);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
-  }, [connectMessage]);
+  }, [toast]);
 
-  useEffect(() => {
-    if (!connected) return;
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const { timeMin, timeMax } = getMonthRange(year, month);
-    setEventsLoading(true);
-    setError(null);
-    fetch(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error && !data.events) {
-          setError(data.error);
-          setEvents([]);
-        } else {
-          setEvents(data.events ?? []);
-        }
-      })
-      .catch(() => {
-        setError("Failed to load events");
-        setEvents([]);
-      })
-      .finally(() => setEventsLoading(false));
-  }, [connected, currentDate.getFullYear(), currentDate.getMonth()]);
+  const calendarItems: CalendarItem[] = [
+    ...events.map((e) => ({
+      type: "event" as const,
+      id: e.id,
+      title: e.title,
+      startAt: new Date(e.startAt),
+      endAt: new Date(e.endAt),
+      isAllDay: e.isAllDay,
+      color: e.color || EVENT_COLORS[0],
+      description: e.description,
+      event: e,
+    })),
+    ...tasks.map((t) => {
+      const d = new Date(t.dueAt!);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+      return {
+        type: "task" as const,
+        id: `task-${t.id}`,
+        title: t.title,
+        startAt: start,
+        endAt: end,
+        isAllDay: true as const,
+        color: TASK_PRIORITY_COLOR[t.priority] || "#6b7280",
+        taskId: t.id,
+        priority: t.priority,
+      };
+    }),
+  ];
 
-  const handleConnect = async () => {
-    setError(null);
-    try {
-      const res = await fetch("/api/calendar/oauth/url");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to get connect URL");
-      if (data.url) window.location.href = data.url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start connect");
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      await fetch("/api/calendar/disconnect", { method: "POST" });
-      setConnected(false);
-      setEvents([]);
-      setConnectMessage(null);
-    } catch {
-      setError("Failed to disconnect");
-    }
-  };
-
-  const month = currentDate.toLocaleString("default", { month: "long" });
-  const year = currentDate.getFullYear();
-  const daysInMonth = new Date(year, currentDate.getMonth() + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, currentDate.getMonth(), 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
   const days: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+  for (let i = 0; i < firstDay; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
   const today = new Date();
-  const isCurrentMonth =
-    today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+  const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
 
-  const getEventsForDay = (day: number) => {
-    return events.filter((e) => {
-      const d = e.start.slice(0, 10);
-      const [y, m, dNum] = d.split("-").map(Number);
-      return y === year && m === currentDate.getMonth() + 1 && dNum === day;
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="h-full flex flex-col rounded-lg overflow-hidden bg-transparent">
-        <div className="tile-header flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-move bg-gray-50 dark:bg-gray-900 rounded-t-lg">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Calendar</h3>
-          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400" aria-label="Close tile">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4 text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
-      </div>
-    );
-  }
-
-  if (connected === false) {
-    return (
-      <div className="h-full flex flex-col rounded-lg overflow-hidden bg-transparent">
-        <div className="tile-header flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-move bg-gray-50 dark:bg-gray-900 rounded-t-lg">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Calendar</h3>
-          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400" aria-label="Close tile">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Connect your Google Calendar to see events in this tile.
-          </p>
-          {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
-          <button
-            onClick={handleConnect}
-            className="w-full px-4 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Connect Google Calendar
-          </button>
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-            You’ll be asked to sign in with Google and allow read-only access to your calendar events.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const getItemsForDay = (day: number) =>
+    calendarItems.filter((item) => itemTouchesDay(item, year, month, day));
 
   const prevMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1));
   const nextMonth = () => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1));
 
+  if (!gridId) {
+    return (
+      <div className="h-full flex flex-col rounded-lg overflow-hidden bg-transparent">
+        <div className="tile-header flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-move bg-gray-50 dark:bg-gray-900 rounded-t-lg">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Calendar</h3>
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400" aria-label="Close">×</button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4 text-gray-500 dark:text-gray-400 text-sm">Calendar is available on a grid.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col rounded-lg overflow-hidden bg-transparent">
-      <div className="tile-header flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-move bg-gray-50 dark:bg-gray-900 rounded-t-lg">
+      <div className="tile-header flex items-center justify-between px-4 py-3 border-b border-gray-200/60 dark:border-gray-700/80 cursor-move bg-gray-50/80 dark:bg-gray-900/80 rounded-t-lg">
         <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <span>📅</span> Calendar
         </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); handleDisconnect(); }}
-            className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-400"
-            title="Disconnect Google Calendar"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
           >
-            Disconnect
+            + Event
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400"
-            aria-label="Close tile"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400" aria-label="Close">×</button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {connectMessage && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm">
-            {connectMessage}
+      <div className="flex-1 overflow-y-auto p-3 min-h-0">
+        {toast && (
+          <div className="mb-2 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm">
+            {toast}
           </div>
         )}
         {error && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
+          <div className="mb-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
             {error}
           </div>
         )}
 
         <div className="flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="p-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            aria-label="Previous month"
-          >
+          <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Previous month">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {month} {year}
+          <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+            {currentDate.toLocaleString("default", { month: "long" })} {year}
           </h4>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="p-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            aria-label="Next month"
-          >
+          <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Next month">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div key={day} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 py-1">
-              {day}
+        <div className="grid grid-cols-7 gap-0.5 text-xs">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            <div key={d} className="text-center font-medium text-gray-500 dark:text-gray-400 py-1">
+              {d}
             </div>
           ))}
-          {days.map((day, index) => {
-            const dayEvents = day !== null ? getEventsForDay(day) : [];
+          {days.map((day, idx) => {
+            const items = day !== null ? getItemsForDay(day) : [];
             const isToday = isCurrentMonth && day === today.getDate();
             return (
               <div
-                key={index}
-                className={`min-h-[2rem] flex flex-col items-center justify-start p-0.5 text-sm rounded-lg ${
-                  day === null
-                    ? ""
-                    : isToday
-                    ? "bg-primary-600 text-white font-bold"
-                    : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                key={idx}
+                className={`min-h-[4rem] rounded-lg border border-transparent p-1 flex flex-col ${
+                  day === null ? "invisible" : isToday ? "bg-primary-500/15 dark:bg-primary-500/20 border-primary-500/30" : "hover:bg-gray-100/80 dark:hover:bg-gray-800/50"
                 }`}
               >
-                {day !== null && <span>{day}</span>}
-                {day !== null && dayEvents.length > 0 && (
-                  <div className="mt-0.5 flex flex-wrap gap-0.5 justify-center">
-                    {dayEvents.slice(0, 3).map((ev) => (
-                      <span
-                        key={ev.id}
-                        className={`inline-block w-1.5 h-1.5 rounded-full ${
-                          isToday ? "bg-white" : "bg-primary-500"
-                        }`}
-                        title={ev.summary}
-                      />
+                {day !== null && (
+                  <span className={`text-xs font-medium ${isToday ? "text-primary-600 dark:text-primary-400" : "text-gray-700 dark:text-gray-300"}`}>
+                    {day}
+                  </span>
+                )}
+                {day !== null && (
+                  <div className="mt-0.5 flex flex-col gap-0.5 overflow-hidden">
+                    {items.slice(0, 3).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}
+                        className="text-left truncate rounded px-1 py-0.5 text-[10px] font-medium border-l-2 hover:opacity-90"
+                        style={{ borderLeftColor: item.color, backgroundColor: `${item.color}20` }}
+                        title={item.title}
+                      >
+                        {item.type === "task" && "✓ "}
+                        {item.title}
+                      </button>
                     ))}
-                    {dayEvents.length > 3 && (
-                      <span className={`text-[10px] ${isToday ? "text-white" : "text-gray-500"}`}>+{dayEvents.length - 3}</span>
+                    {items.length > 3 && (
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 px-1">+{items.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -291,62 +254,396 @@ export function CalendarTile({ tileId, gridId, onClose }: CalendarTileProps) {
           })}
         </div>
 
-        {eventsLoading && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading events…</p>
+        {loading && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading…</p>
         )}
-        {connected && events.length > 0 && (
-          <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">This month</p>
-            <ul className="space-y-1.5">
-              {events.slice(0, 10).map((ev) => (
-                <li key={ev.id} className="flex items-center justify-between gap-2 group">
-                  <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
-                    {ev.allDay ? "All day" : ev.start.slice(11, 16)} — {ev.summary}
-                  </span>
-                  {gridId && (
-                    <span className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const oneHourBefore = new Date(ev.start);
-                          oneHourBefore.setHours(oneHourBefore.getHours() - 1);
-                          try {
-                            const res = await fetch("/api/tasks", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                gridId,
-                                title: `Prep: ${ev.summary}`,
-                                dueAt: oneHourBefore.toISOString(),
-                                visibility: "SHARED",
-                                calendarEventId: ev.id || ev.htmlLink || undefined,
-                              }),
-                            });
-                            if (res.ok) setConnectMessage("Task created");
-                          } catch {}
-                        }}
-                        className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline"
-                      >
-                        Task
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent("klyr-create-loop-from-event", { detail: { eventTitle: ev.summary, gridId } }));
-                          setConnectMessage("Start Loop — add a Loop Room tile for this event");
-                        }}
-                        className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline"
-                      >
-                        Loop
-                      </button>
-                    </span>
-                  )}
-                </li>
-              ))}
-              {events.length > 10 && <li className="text-xs text-gray-500">+{events.length - 10} more</li>}
-            </ul>
+      </div>
+
+      {showAddModal && (
+        <AddEventModal
+          gridId={gridId}
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => { setShowAddModal(false); fetchData(); setToast("Event added"); }}
+          initialStart={new Date(year, month, 1)}
+          initialEnd={new Date(year, month, 1)}
+        />
+      )}
+
+      {editingEvent && (
+        <EditEventModal
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSaved={() => { setEditingEvent(null); fetchData(); setToast("Event updated"); }}
+          onDeleted={() => { setEditingEvent(null); fetchData(); setToast("Event deleted"); }}
+        />
+      )}
+
+      {detailItem && gridId && (
+        <DetailModal
+          item={detailItem}
+          gridId={gridId}
+          onClose={() => setDetailItem(null)}
+          onEdit={() => {
+            if (detailItem.type === "event") {
+              setDetailItem(null);
+              setEditingEvent(detailItem.event);
+            }
+          }}
+          onTaskCreated={() => {
+            setDetailItem(null);
+            fetchData();
+            setToast("Task created from event");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddEventModal({
+  gridId,
+  onClose,
+  onSaved,
+  initialStart,
+  initialEnd,
+}: {
+  gridId: string;
+  onClose: () => void;
+  onSaved: () => void;
+  initialStart: Date;
+  initialEnd: Date;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState(initialStart.toISOString().slice(0, 10));
+  const [startTime, setStartTime] = useState("09:00");
+  const [endDate, setEndDate] = useState(initialEnd.toISOString().slice(0, 10));
+  const [endTime, setEndTime] = useState("10:00");
+  const [isAllDay, setIsAllDay] = useState(true);
+  const [color, setColor] = useState(EVENT_COLORS[0]);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const start = isAllDay
+        ? new Date(startDate + "T00:00:00.000Z")
+        : new Date(startDate + "T" + startTime + ":00.000Z");
+      const end = isAllDay
+        ? new Date(endDate + "T23:59:59.999Z")
+        : new Date(endDate + "T" + endTime + ":00.000Z");
+      if (end < start) {
+        setSaving(false);
+        return;
+      }
+      const res = await fetch("/api/grid/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gridId,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+          isAllDay,
+          color,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
+      onSaved();
+    } catch (err) {
+      console.error(err);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h4 className="font-semibold text-gray-900 dark:text-white">New event</h4>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">×</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Milestone, deadline, meeting…"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              required
+            />
           </div>
-        )}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional details"
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
+            <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Start</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              />
+              {!isAllDay && (
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">End</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              />
+              {!isAllDay && (
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                />
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Color</label>
+            <div className="flex gap-2 flex-wrap">
+              {EVENT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className="w-8 h-8 rounded-full border-2 transition-transform"
+                  style={{ backgroundColor: c, borderColor: color === c ? "#111" : "transparent", transform: color === c ? "scale(1.1)" : "scale(1)" }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
+              {saving ? "Adding…" : "Add event"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditEventModal({
+  event,
+  onClose,
+  onSaved,
+  onDeleted,
+}: {
+  event: GridCalendarEvent;
+  onClose: () => void;
+  onSaved: () => void;
+  onDeleted: () => void;
+}) {
+  const [title, setTitle] = useState(event.title);
+  const [description, setDescription] = useState(event.description ?? "");
+  const [startDate, setStartDate] = useState(event.startAt.slice(0, 10));
+  const [startTime, setStartTime] = useState(event.startAt.slice(11, 16));
+  const [endDate, setEndDate] = useState(event.endAt.slice(0, 10));
+  const [endTime, setEndTime] = useState(event.endAt.slice(11, 16));
+  const [isAllDay, setIsAllDay] = useState(event.isAllDay);
+  const [color, setColor] = useState(event.color || EVENT_COLORS[0]);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const start = isAllDay ? new Date(startDate + "T00:00:00.000Z") : new Date(startDate + "T" + startTime + ":00.000Z");
+      const end = isAllDay ? new Date(endDate + "T23:59:59.999Z") : new Date(endDate + "T" + endTime + ":00.000Z");
+      const res = await fetch(`/api/grid/calendar/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+          isAllDay,
+          color,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      onSaved();
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this event?")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/grid/calendar/${event.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      onDeleted();
+    } catch {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h4 className="font-semibold text-gray-900 dark:text-white">Edit event</h4>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">×</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title *</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" required />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
+            <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Start</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" />
+              {!isAllDay && <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" />}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">End</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" />
+              {!isAllDay && <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" />}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Color</label>
+            <div className="flex gap-2 flex-wrap">
+              {EVENT_COLORS.map((c) => (
+                <button key={c} type="button" onClick={() => setColor(c)} className="w-8 h-8 rounded-full border-2 transition-transform" style={{ backgroundColor: c, borderColor: color === c ? "#111" : "transparent", transform: color === c ? "scale(1.1)" : "scale(1)" }} />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={handleDelete} disabled={deleting} className="py-2 px-3 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50">
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DetailModal({
+  item,
+  gridId,
+  onClose,
+  onEdit,
+  onTaskCreated,
+}: {
+  item: CalendarItem;
+  gridId: string;
+  onClose: () => void;
+  onEdit: () => void;
+  onTaskCreated: () => void;
+}) {
+  const [creatingTask, setCreatingTask] = useState(false);
+
+  const handleCreateTask = async () => {
+    if (item.type !== "event") return;
+    setCreatingTask(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gridId,
+          title: item.title,
+          description: item.description ?? undefined,
+          dueAt: item.startAt.toISOString(),
+          visibility: "SHARED",
+          calendarEventId: item.event.id,
+        }),
+      });
+      if (res.ok) onTaskCreated();
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-sm p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className="w-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: item.color }} />
+          <div className="min-w-0 flex-1">
+            <h4 className="font-semibold text-gray-900 dark:text-white">{item.title}</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {item.startAt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+              {!item.isAllDay && ` · ${item.startAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} – ${item.endAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+            </p>
+            {item.type === "event" && item.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{item.description}</p>}
+            {item.type === "task" && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From Projects & Tasks</p>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-4">
+          <button type="button" onClick={onClose} className="flex-1 min-w-[80px] py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium">
+            Close
+          </button>
+          {item.type === "event" && (
+            <>
+              <button
+                type="button"
+                onClick={handleCreateTask}
+                disabled={creatingTask}
+                className="flex-1 min-w-[80px] py-2 rounded-lg border border-primary-500 text-primary-600 dark:text-primary-400 text-sm font-medium hover:bg-primary-500/10 disabled:opacity-50"
+              >
+                {creatingTask ? "Creating…" : "Create task"}
+              </button>
+              <button type="button" onClick={onEdit} className="flex-1 min-w-[80px] py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700">
+                Edit
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

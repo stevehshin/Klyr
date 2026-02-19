@@ -29,21 +29,42 @@ model User {
   createdTasks               Task[]
   assignedTasks              Task[]             @relation("TaskAssignee")
   taskComments               TaskComment[]
+  calendarEvents             GridCalendarEvent[]
 }
 
 model Grid {
-  id          String       @id @default(cuid())
-  name        String       @default("Untitled Grid")
-  icon        String?      // emoji or single character for sidebar
-  ownerId     String
-  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  tiles       Tile[]
-  sharedWith  GridShare[]
-  projects    Project[]
-  tasks       Task[]
-  createdAt   DateTime     @default(now())
-  
+  id              String               @id @default(cuid())
+  name            String               @default("Untitled Grid")
+  icon            String?              // emoji or single character for sidebar
+  ownerId         String
+  owner           User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tiles           Tile[]
+  sharedWith      GridShare[]
+  projects        Project[]
+  tasks           Task[]
+  calendarEvents  GridCalendarEvent[]
+  createdAt       DateTime             @default(now())
+
   @@index([ownerId])
+}
+
+model GridCalendarEvent {
+  id              String   @id @default(cuid())
+  gridId          String
+  grid            Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  startAt         DateTime
+  endAt           DateTime
+  isAllDay        Boolean  @default(false)
+  color           String?  // hex e.g. #3B82F6
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  taskId          String?  // optional link to task (task due shows on calendar separately; this is for event→task link)
+  createdAt       DateTime @default(now())
+
+  @@index([gridId])
+  @@index([startAt])
 }
 
 model GridShare {
