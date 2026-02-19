@@ -70,7 +70,7 @@ export default function RegisterPage() {
             alt="Klyr"
             width={180}
             height={56}
-            className="h-12 w-auto object-contain dark:invert"
+            className="h-12 w-auto object-contain"
             priority
           />
           <h2 className="mt-6 text-center text-3xl font-normal text-gray-900 dark:text-white">

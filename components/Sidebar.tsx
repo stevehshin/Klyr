@@ -126,7 +126,7 @@ export function Sidebar({
         >
           <div className="p-4 border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Image src="/klyr-logo.png" alt="Klyr" width={100} height={32} className="h-8 w-auto object-contain invert" />
+              <Image src="/logo.svg" alt="Klyr" width={32} height={32} className="h-8 w-auto object-contain" />
             </div>
             <button
               onClick={onClose}
@@ -351,7 +351,7 @@ export function Sidebar({
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Image src="/klyr-logo.png" alt="Klyr" width={100} height={32} className="h-8 w-auto object-contain invert" />
+          <Image src="/logo.svg" alt="Klyr" width={32} height={32} className="h-8 w-auto object-contain" />
         </div>
         <button
           onClick={() => setIsCollapsed(true)}

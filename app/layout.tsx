@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     description: "A calm, tile-based workspace with end-to-end encryption",
   },
   icons: {
-    icon: "/klyr-logo.png",
-    apple: "/klyr-logo.png",
+    icon: "/logo.svg",
+    apple: "/logo.svg",
   },
 };
 
@@ -45,7 +45,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Klyr" />
-        <link rel="apple-touch-icon" href="/klyr-logo.png" />
+        <link rel="apple-touch-icon" href="/logo.svg" />
       </head>
       <body className="antialiased min-h-screen touch-manipulation">
         <ThemeProvider>{children}</ThemeProvider>
