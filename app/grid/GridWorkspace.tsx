@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Grid } from "@/components/Grid";
+import { MobileGridStack } from "@/components/grid/MobileGridStack";
 import { Sidebar, GridInfo, ChannelInfo, ChannelGroupInfo } from "@/components/Sidebar";
 import { ShareGridModal } from "@/components/ShareGridModal";
 import { CreateGridModal } from "@/components/CreateGridModal";
@@ -661,23 +662,41 @@ export function GridWorkspace({
               ])
             )}
           >
-            <Grid
-              initialTiles={currentGrid.tiles}
-              userId={userId}
-              gridId={currentGrid.id}
-              gridName={currentGrid.name}
-              userEmail={userEmail}
-              grids={grids}
-              gridMembers={gridMembers}
-              onGridSelect={(id) => {
-                handleGridSelect(id);
-                setViewMode("grid");
-              }}
-              onShare={() => setShareModalGridId(currentGrid.id)}
-              focusMode={focusMode}
-              onFocusModeChange={setFocusMode}
-              onOpenSidebar={isMobile ? () => setSidebarOpenMobile(true) : undefined}
-            />
+            {isMobile ? (
+              <MobileGridStack
+                initialTiles={currentGrid.tiles}
+                userId={userId}
+                gridId={currentGrid.id}
+                gridName={currentGrid.name}
+                userEmail={userEmail}
+                grids={grids}
+                gridMembers={gridMembers}
+                onGridSelect={(id) => {
+                  handleGridSelect(id);
+                  setViewMode("grid");
+                }}
+                onShare={() => setShareModalGridId(currentGrid.id)}
+                onOpenSidebar={() => setSidebarOpenMobile(true)}
+              />
+            ) : (
+              <Grid
+                initialTiles={currentGrid.tiles}
+                userId={userId}
+                gridId={currentGrid.id}
+                gridName={currentGrid.name}
+                userEmail={userEmail}
+                grids={grids}
+                gridMembers={gridMembers}
+                onGridSelect={(id) => {
+                  handleGridSelect(id);
+                  setViewMode("grid");
+                }}
+                onShare={() => setShareModalGridId(currentGrid.id)}
+                focusMode={focusMode}
+                onFocusModeChange={setFocusMode}
+                onOpenSidebar={undefined}
+              />
+            )}
             <DockWithActiveTile
               currentGrid={currentGrid}
               joinedLoopRoom={joinedLoopRoom}
