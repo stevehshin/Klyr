@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 export interface CalendarTileProps {
   tileId: string;
@@ -191,8 +192,11 @@ export function CalendarTile({ gridId, onClose }: CalendarTileProps) {
           </div>
         )}
         {error && (
-          <div className="mb-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm">
-            {error}
+          <div className="mb-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm flex items-center justify-between gap-2">
+            <span>{error}</span>
+            <button type="button" onClick={() => { setError(null); fetchData(); }} className="flex-shrink-0 px-2 py-1 text-xs font-medium rounded bg-red-200 dark:bg-red-800/50 hover:bg-red-300 dark:hover:bg-red-800 text-red-800 dark:text-red-200">
+              Retry
+            </button>
           </div>
         )}
 
@@ -259,43 +263,53 @@ export function CalendarTile({ gridId, onClose }: CalendarTileProps) {
         )}
       </div>
 
-      {showAddModal && (
-        <AddEventModal
-          gridId={gridId}
-          onClose={() => setShowAddModal(false)}
-          onSaved={() => { setShowAddModal(false); fetchData(); setToast("Event added"); }}
-          initialStart={new Date(year, month, 1)}
-          initialEnd={new Date(year, month, 1)}
-        />
-      )}
+      {showAddModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <AddEventModal
+            gridId={gridId}
+            onClose={() => setShowAddModal(false)}
+            onSaved={() => { setShowAddModal(false); fetchData(); setToast("Event added"); }}
+            initialStart={new Date(year, month, 1)}
+            initialEnd={new Date(year, month, 1)}
+          />,
+          document.body
+        )}
 
-      {editingEvent && (
-        <EditEventModal
-          event={editingEvent}
-          onClose={() => setEditingEvent(null)}
-          onSaved={() => { setEditingEvent(null); fetchData(); setToast("Event updated"); }}
-          onDeleted={() => { setEditingEvent(null); fetchData(); setToast("Event deleted"); }}
-        />
-      )}
+      {editingEvent &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <EditEventModal
+            event={editingEvent}
+            onClose={() => setEditingEvent(null)}
+            onSaved={() => { setEditingEvent(null); fetchData(); setToast("Event updated"); }}
+            onDeleted={() => { setEditingEvent(null); fetchData(); setToast("Event deleted"); }}
+          />,
+          document.body
+        )}
 
-      {detailItem && gridId && (
-        <DetailModal
-          item={detailItem}
-          gridId={gridId}
-          onClose={() => setDetailItem(null)}
-          onEdit={() => {
-            if (detailItem.type === "event") {
+      {detailItem &&
+        gridId &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <DetailModal
+            item={detailItem}
+            gridId={gridId}
+            onClose={() => setDetailItem(null)}
+            onEdit={() => {
+              if (detailItem.type === "event") {
+                setDetailItem(null);
+                setEditingEvent(detailItem.event);
+              }
+            }}
+            onTaskCreated={() => {
               setDetailItem(null);
-              setEditingEvent(detailItem.event);
-            }
-          }}
-          onTaskCreated={() => {
-            setDetailItem(null);
-            fetchData();
-            setToast("Task created from event");
-          }}
-        />
-      )}
+              fetchData();
+              setToast("Task created from event");
+            }}
+          />,
+          document.body
+        )}
     </div>
   );
 }
@@ -322,11 +336,13 @@ function AddEventModal({
   const [isAllDay, setIsAllDay] = useState(true);
   const [color, setColor] = useState(EVENT_COLORS[0]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const start = isAllDay
         ? new Date(startDate + "T00:00:00.000Z")
@@ -335,6 +351,7 @@ function AddEventModal({
         ? new Date(endDate + "T23:59:59.999Z")
         : new Date(endDate + "T" + endTime + ":00.000Z");
       if (end < start) {
+        setSaveError("End must be after start");
         setSaving(false);
         return;
       }
@@ -351,13 +368,15 @@ function AddEventModal({
           color,
         }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create");
+        setSaveError(data.error || "Failed to create event");
+        setSaving(false);
+        return;
       }
       onSaved();
     } catch (err) {
-      console.error(err);
+      setSaveError(err instanceof Error ? err.message : "Failed to create event");
       setSaving(false);
     }
   };
@@ -370,6 +389,11 @@ function AddEventModal({
           <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">×</button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {saveError && (
+            <div className="rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm px-3 py-2">
+              {saveError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title *</label>
             <input
@@ -480,11 +504,13 @@ function EditEventModal({
   const [color, setColor] = useState(event.color || EVENT_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const start = isAllDay ? new Date(startDate + "T00:00:00.000Z") : new Date(startDate + "T" + startTime + ":00.000Z");
       const end = isAllDay ? new Date(endDate + "T23:59:59.999Z") : new Date(endDate + "T" + endTime + ":00.000Z");
@@ -500,9 +526,15 @@ function EditEventModal({
           color,
         }),
       });
-      if (!res.ok) throw new Error("Failed to update");
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error || "Failed to update");
+        setSaving(false);
+        return;
+      }
       onSaved();
     } catch {
+      setSaveError("Failed to update event");
       setSaving(false);
     }
   };
@@ -510,11 +542,18 @@ function EditEventModal({
   const handleDelete = async () => {
     if (!confirm("Delete this event?")) return;
     setDeleting(true);
+    setSaveError(null);
     try {
       const res = await fetch(`/api/grid/calendar/${event.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      if (!res.ok) {
+        const data = await res.json();
+        setSaveError(data.error || "Failed to delete");
+        return;
+      }
       onDeleted();
     } catch {
+      setSaveError("Failed to delete event");
+    } finally {
       setDeleting(false);
     }
   };
@@ -527,6 +566,11 @@ function EditEventModal({
           <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">×</button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {saveError && (
+            <div className="rounded-lg bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm px-3 py-2">
+              {saveError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title *</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm" required />

@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ events });
   } catch (error) {
     console.error("Grid calendar GET:", error);
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to fetch events";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
