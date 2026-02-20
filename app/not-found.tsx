@@ -7,9 +7,9 @@ export default function NotFound() {
       <Image
         src="/klyr-logo.png"
         alt="Klyr"
-        width={180}
-        height={56}
-        className="h-12 w-auto object-contain mb-8"
+        width={240}
+        height={75}
+        className="h-16 w-auto object-contain mb-8"
       />
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Page not found</h1>
       <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">

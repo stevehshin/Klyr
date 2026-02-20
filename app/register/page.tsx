@@ -68,9 +68,9 @@ export default function RegisterPage() {
           <Image
             src="/klyr-logo.png"
             alt="Klyr"
-            width={180}
-            height={56}
-            className="h-12 w-auto object-contain"
+            width={240}
+            height={75}
+            className="h-16 w-auto object-contain"
             priority
           />
           <h2 className="mt-6 text-center text-3xl font-normal text-gray-900 dark:text-white">
