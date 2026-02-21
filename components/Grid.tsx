@@ -6,6 +6,7 @@ import { NotesTile } from "./NotesTile";
 import { DMTile } from "./DMTile";
 import { TasksTile } from "./TasksTile";
 import { LinksTile } from "./LinksTile";
+import { FilesTile } from "./FilesTile";
 import { CalendarTile } from "./CalendarTile";
 import { ChannelTile } from "./ChannelTile";
 import { CallTile } from "./CallTile";
@@ -513,6 +514,8 @@ export function Grid({
         );
       if (tile.type === "links")
         return <LinksTile tileId={tile.id} onClose={() => handleCloseTile(tile.id)} />;
+      if (tile.type === "files")
+        return <FilesTile tileId={tile.id} gridId={gridId} onClose={() => handleCloseTile(tile.id)} />;
       if (tile.type === "calendar")
         return <CalendarTile tileId={tile.id} gridId={gridId} onClose={() => handleCloseTile(tile.id)} />;
       return null;

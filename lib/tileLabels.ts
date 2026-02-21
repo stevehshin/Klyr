@@ -7,6 +7,7 @@ export function getTileLabel(type: string, fallback?: string): string {
     notes: "Notes",
     tasks: "Projects & Tasks",
     links: "Links",
+    files: "Files",
     calendar: "Calendar",
     dm: "DM",
     channel: "Channel",

@@ -27,6 +27,8 @@ function getTileLabel(tile: HiddenTile): string {
       return "✅ Tasks";
     case "links":
       return "🔗 Links";
+    case "files":
+      return "📁 Files";
     case "calendar":
       return "📅 Calendar";
     case "channel":

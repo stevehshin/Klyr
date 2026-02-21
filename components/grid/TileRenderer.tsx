@@ -4,6 +4,7 @@ import { NotesTile } from "@/components/NotesTile";
 import { DMTile } from "@/components/DMTile";
 import { TasksTile } from "@/components/TasksTile";
 import { LinksTile } from "@/components/LinksTile";
+import { FilesTile } from "@/components/FilesTile";
 import { CalendarTile } from "@/components/CalendarTile";
 import { ChannelTile } from "@/components/ChannelTile";
 import { CallTile } from "@/components/CallTile";
@@ -84,6 +85,8 @@ export function TileRenderer({ tile, gridId, userId, userEmail, gridMembers = []
     );
   if (tile.type === "links")
     return <LinksTile tileId={tile.id} onClose={() => onClose(tile.id)} />;
+  if (tile.type === "files")
+    return <FilesTile tileId={tile.id} gridId={gridId} onClose={() => onClose(tile.id)} />;
   if (tile.type === "calendar")
     return <CalendarTile tileId={tile.id} gridId={gridId} onClose={() => onClose(tile.id)} />;
   return null;

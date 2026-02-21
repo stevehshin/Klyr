@@ -15,6 +15,7 @@ const TILE_TYPES = [
   { id: "notes", name: "Notes", icon: "📝", description: "Quick notes and text" },
   { id: "tasks", name: "Projects & Tasks", icon: "✅", description: "Kanban and list with assignees" },
   { id: "links", name: "Links", icon: "🔗", description: "Bookmarks and URLs" },
+  { id: "files", name: "Files", icon: "📁", description: "Shared files for the grid" },
   { id: "calendar", name: "Calendar", icon: "📅", description: "Calendar view" },
   { id: "summary", name: "Daily Summary", icon: "✨", description: "AI summary of new grid content" },
   { id: "dm", name: "Messages", icon: "💬", description: "Encrypted direct messages", needsSelection: true },

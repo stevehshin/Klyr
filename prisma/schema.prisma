@@ -30,6 +30,7 @@ model User {
   assignedTasks              Task[]             @relation("TaskAssignee")
   taskComments               TaskComment[]
   calendarEvents             GridCalendarEvent[]
+  gridFiles                  GridFile[]
 }
 
 model Grid {
@@ -43,9 +44,26 @@ model Grid {
   projects        Project[]
   tasks           Task[]
   calendarEvents  GridCalendarEvent[]
+  gridFiles       GridFile[]
   createdAt       DateTime             @default(now())
 
   @@index([ownerId])
+}
+
+model GridFile {
+  id              String   @id @default(cuid())
+  gridId          String
+  grid            Grid     @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  name            String   // original filename
+  mimeType        String   @default("application/octet-stream")
+  size            Int      // bytes
+  data            Bytes    // file content
+  uploadedByUserId String?
+  uploadedBy      User?    @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([gridId])
+  @@index([createdAt])
 }
 
 model GridCalendarEvent {
