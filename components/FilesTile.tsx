@@ -95,7 +95,14 @@ export function FilesTile({ gridId, onClose }: FilesTileProps) {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { error?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        if (res.status === 413) data = { error: "File too large. Maximum size is 10MB." };
+        else data = { error: text?.slice(0, 100) || "Upload failed." };
+      }
       if (!res.ok) throw new Error(data.error || "Upload failed");
       await fetchFiles();
     } catch (err) {
