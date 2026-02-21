@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 export interface FilesTileProps {
   tileId: string;
@@ -216,83 +217,86 @@ export function FilesTile({ gridId, onClose }: FilesTileProps) {
         )}
       </div>
 
-      {previewFile && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setPreviewFile(null)}
-        >
+      {previewFile &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setPreviewFile(null)}
           >
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-              <h4 className="font-semibold text-gray-900 dark:text-white truncate flex-1 mr-2">
-                {previewFile.name}
-              </h4>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <a
-                  href={downloadUrl(previewFile.id)}
-                  download={previewFile.name}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
-                >
-                  Download
-                </a>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(previewFile.id)}
-                  className="px-3 py-1.5 text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewFile(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                  aria-label="Close"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto p-4 bg-gray-100 dark:bg-gray-800">
-              {canPreviewInBrowser(previewFile.mimeType) ? (
-                previewFile.mimeType.startsWith("image/") ? (
-                  <img
-                    src={previewUrl(previewFile.id)}
-                    alt={previewFile.name}
-                    className="max-w-full h-auto max-h-[70vh] object-contain mx-auto"
-                  />
-                ) : previewFile.mimeType === "application/pdf" ? (
-                  <iframe
-                    src={previewUrl(previewFile.id)}
-                    title={previewFile.name}
-                    className="w-full h-[70vh] rounded-lg border-0 bg-white"
-                  />
-                ) : (
-                  <iframe
-                    src={previewUrl(previewFile.id)}
-                    title={previewFile.name}
-                    className="w-full h-[70vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
-                  />
-                )
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
-                  <span className="text-6xl mb-2">{fileIcon(previewFile.mimeType)}</span>
-                  <p className="text-sm">{previewFile.name}</p>
-                  <p className="text-xs mt-1">{formatSize(previewFile.size)}</p>
+            <div
+              className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-gray-900 dark:text-white truncate flex-1 mr-2">
+                  {previewFile.name}
+                </h4>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <a
                     href={downloadUrl(previewFile.id)}
                     download={previewFile.name}
-                    className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
                   >
-                    Download to open
+                    Download
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(previewFile.id)}
+                    className="px-3 py-1.5 text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFile(null)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
                 </div>
-              )}
+              </div>
+              <div className="flex-1 min-h-0 overflow-auto p-4 bg-gray-100 dark:bg-gray-800">
+                {canPreviewInBrowser(previewFile.mimeType) ? (
+                  previewFile.mimeType.startsWith("image/") ? (
+                    <img
+                      src={previewUrl(previewFile.id)}
+                      alt={previewFile.name}
+                      className="max-w-full h-auto max-h-[70vh] object-contain mx-auto"
+                    />
+                  ) : previewFile.mimeType === "application/pdf" ? (
+                    <iframe
+                      src={previewUrl(previewFile.id)}
+                      title={previewFile.name}
+                      className="w-full h-[70vh] rounded-lg border-0 bg-white"
+                    />
+                  ) : (
+                    <iframe
+                      src={previewUrl(previewFile.id)}
+                      title={previewFile.name}
+                      className="w-full h-[70vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    />
+                  )
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                    <span className="text-6xl mb-2">{fileIcon(previewFile.mimeType)}</span>
+                    <p className="text-sm">{previewFile.name}</p>
+                    <p className="text-xs mt-1">{formatSize(previewFile.size)}</p>
+                    <a
+                      href={downloadUrl(previewFile.id)}
+                      download={previewFile.name}
+                      className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                    >
+                      Download to open
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
