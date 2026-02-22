@@ -33,7 +33,12 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      let data: { error?: string } = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: "Invalid response from server" };
+      }
 
       if (!response.ok) {
         setError(data.error || "Login failed");
@@ -45,7 +50,7 @@ export default function LoginPage() {
       router.push("/grid");
     } catch (err) {
       console.error("Login error:", err);
-      setError("An unexpected error occurred");
+      setError("Cannot reach server. Check your connection and try again.");
       setLoading(false);
     }
   };

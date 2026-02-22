@@ -50,9 +50,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Login error:", error);
+    const msg = (error as Error)?.message ?? String(error);
+    const isDb =
+      msg.includes("DATABASE") ||
+      msg.includes("P1001") ||
+      msg.includes("Can't reach") ||
+      msg.includes("connection") ||
+      msg.includes("ECONNREFUSED");
     return NextResponse.json(
-      { error: "An error occurred during login" },
-      { status: 500 }
+      {
+        error: isDb
+          ? "Database is unavailable. Check that DATABASE_URL and DIRECT_URL are set in Vercel and the database is running."
+          : "An error occurred during login. Please try again.",
+      },
+      { status: 503 }
     );
   }
 }
