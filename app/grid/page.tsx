@@ -8,15 +8,21 @@ export default async function GridPage({
 }: {
   searchParams: Promise<{ id?: string }>;
 }) {
-  // Check authentication
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    console.error("Grid getSession error:", e);
+    redirect("/login");
+  }
 
   if (!session) {
     redirect("/login");
   }
 
-  // Fetch user and all grids they can access (owned + shared with them)
-  const user = await prisma.user.findUnique({
+  let user;
+  try {
+    user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: {
       id: true,
@@ -45,6 +51,20 @@ export default async function GridPage({
       },
     },
   });
+  } catch (e) {
+    console.error("Grid prisma error:", e);
+    const msg = (e as Error)?.message ?? String(e);
+    const isDb =
+      msg.includes("DATABASE") ||
+      msg.includes("P1001") ||
+      msg.includes("Can't reach") ||
+      msg.includes("connection");
+    throw new Error(
+      isDb
+        ? "Database connection failed. Set DATABASE_URL and DIRECT_URL in Vercel and run prisma db push."
+        : msg
+    );
+  }
 
   if (!user) {
     redirect("/login");
