@@ -7,6 +7,7 @@ import {
   getEncryptionKey,
   generateEncryptionKey,
 } from "@/lib/crypto";
+import { UserAvatar } from "./UserAvatar";
 
 export interface ChannelTileProps {
   tileId: string;
@@ -21,7 +22,10 @@ interface Message {
   encryptedContent: string;
   createdAt: string;
   user: {
+    id?: string;
     email: string;
+    displayName?: string | null;
+    avatarData?: string | null;
   };
   decryptedContent?: string;
   decryptError?: boolean;
@@ -173,13 +177,11 @@ export function ChannelTile({
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className="flex gap-2">
-              <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                {msg.user.email.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar user={msg.user} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2 mb-0.5">
                   <span className="font-semibold text-gray-900 dark:text-white text-xs truncate">
-                    {msg.user.email}
+                    {msg.user.displayName?.trim() || msg.user.email?.split("@")[0] || msg.user.email}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                     {new Date(msg.createdAt).toLocaleTimeString([], {

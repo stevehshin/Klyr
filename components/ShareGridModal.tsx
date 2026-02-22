@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { UserAvatar } from "./UserAvatar";
 
-type UserOption = { id: string; email: string };
+type UserOption = { id: string; email: string; displayName?: string | null; avatarData?: string | null };
 
 export interface ShareGridModalProps {
   gridId: string;
@@ -41,7 +42,11 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
   }, []);
 
   const filteredUsers = userSearch.trim()
-    ? users.filter((u) => u.email.toLowerCase().includes(userSearch.toLowerCase()))
+    ? users.filter(
+        (u) =>
+          u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+          (u.displayName && u.displayName.toLowerCase().includes(userSearch.toLowerCase()))
+      )
     : users;
 
   const handleSelectUser = (user: UserOption) => {
@@ -144,13 +149,16 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
                     key={user.id}
                     type="button"
                     onClick={() => handleSelectUser(user)}
-                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm ${
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm flex items-center gap-2 ${
                       email === user.email
                         ? "bg-primary-500/10 text-primary-700 dark:text-primary-300 font-medium"
                         : "text-gray-900 dark:text-white"
                     }`}
                   >
-                    {user.email}
+                    <UserAvatar user={user} size="sm" />
+                    <span className="truncate">
+                      {user.displayName?.trim() || user.email.split("@")[0] || user.email}
+                    </span>
                   </button>
                 ))
               )}

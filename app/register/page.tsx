@@ -65,14 +65,16 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="flex flex-col items-center">
-          <Image
-            src="/klyr-logo.png"
-            alt="Klyr"
-            width={240}
-            height={75}
-            className="h-16 w-auto object-contain"
-            priority
-          />
+          <div className="flex justify-center overflow-visible min-h-[64px]">
+            <Image
+              src="/klyr-logo.png"
+              alt="Klyr"
+              width={240}
+              height={75}
+              className="max-h-16 w-auto object-contain"
+              priority
+            />
+          </div>
           <h2 className="mt-6 text-center text-3xl font-normal text-gray-900 dark:text-white">
             Create your account
           </h2>

@@ -7,6 +7,7 @@ import {
   getEncryptionKey,
   generateEncryptionKey,
 } from "@/lib/crypto";
+import { UserAvatar } from "./UserAvatar";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
 
 export interface DMViewProps {
@@ -23,7 +24,12 @@ interface Message {
   id: string;
   encryptedContent: string;
   createdAt: string;
-  user?: { email: string };
+  user?: {
+    id?: string;
+    email: string;
+    displayName?: string | null;
+    avatarData?: string | null;
+  };
   decryptedContent?: string;
   decryptError?: boolean;
 }
@@ -178,10 +184,12 @@ export function DMView({
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className="text-sm">
+            <div key={msg.id} className="flex gap-2 text-sm">
+              {msg.user && <UserAvatar user={msg.user} size="sm" />}
+              <div className="flex-1 min-w-0">
               {msg.user?.email && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  {msg.user.email.split("@")[0]}
+                  {msg.user.displayName?.trim() || msg.user.email.split("@")[0]}
                 </p>
               )}
               <p className="text-gray-900 dark:text-white">
@@ -191,6 +199,7 @@ export function DMView({
                   msg.decryptedContent
                 )}
               </p>
+              </div>
             </div>
           ))
         )}

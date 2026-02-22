@@ -37,7 +37,10 @@ export async function GET(
       include: {
         user: {
           select: {
+            id: true,
             email: true,
+            displayName: true,
+            avatarData: true,
           },
         },
       },
@@ -104,7 +107,10 @@ export async function POST(
       include: {
         user: {
           select: {
+            id: true,
             email: true,
+            displayName: true,
+            avatarData: true,
           },
         },
       },

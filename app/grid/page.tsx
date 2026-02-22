@@ -135,11 +135,11 @@ export default async function GridPage({
       // Grid members (owner + shared users) for Tasks swim lanes and assignee picker
       const ownerUser = await prisma.user.findUnique({
         where: { id: gridData.ownerId },
-        select: { id: true, email: true },
+        select: { id: true, email: true, displayName: true },
       });
       const shares = await prisma.gridShare.findMany({
         where: { gridId: gridData.id },
-        include: { user: { select: { id: true, email: true } } },
+        include: { user: { select: { id: true, email: true, displayName: true } } },
       });
       const memberIds = new Set<string>();
       const gridMembers: { id: string; email: string; displayName: string }[] = [];
@@ -148,7 +148,7 @@ export default async function GridPage({
         gridMembers.push({
           id: ownerUser.id,
           email: ownerUser.email,
-          displayName: ownerUser.email.split("@")[0] ?? ownerUser.email,
+          displayName: (ownerUser.displayName?.trim() || ownerUser.email.split("@")[0]) ?? ownerUser.email,
         });
       }
       for (const s of shares) {
@@ -157,7 +157,7 @@ export default async function GridPage({
           gridMembers.push({
             id: s.user.id,
             email: s.user.email,
-            displayName: s.user.email.split("@")[0] ?? s.user.email,
+            displayName: (s.user.displayName?.trim() || s.user.email.split("@")[0]) ?? s.user.email,
           });
         }
       }

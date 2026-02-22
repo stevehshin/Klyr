@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     const messages = await prisma.message.findMany({
       where: { tileId },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { id: true, email: true, displayName: true, avatarData: true } } },
       orderBy: { createdAt: "asc" },
     });
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         encryptedContent,
         userId: session.userId,
       },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { id: true, email: true, displayName: true, avatarData: true } } },
     });
 
     return NextResponse.json({ success: true, message });

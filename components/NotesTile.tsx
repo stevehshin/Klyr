@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface NotesTileProps {
   tileId: string;
@@ -9,24 +9,40 @@ export interface NotesTileProps {
 
 export function NotesTile({ tileId, onClose }: NotesTileProps) {
   const [content, setContent] = useState("");
-  const storageKey = `klyr-notes-${tileId}`;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setContent(saved);
+  const fetchNotes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tiles/${tileId}/notes`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load notes");
+      setContent(data.content ?? "");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load notes");
+    } finally {
+      setLoading(false);
     }
-  }, [storageKey]);
+  }, [tileId]);
 
-  // Auto-save to localStorage
   useEffect(() => {
-    const timer = setTimeout(() => {
-      localStorage.setItem(storageKey, content);
-    }, 500); // Debounce 500ms
+    fetchNotes();
+  }, [fetchNotes]);
 
+  // Debounced save to API (shared with everyone on grid)
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/tiles/${tileId}/notes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      }).catch(() => {});
+    }, 500);
     return () => clearTimeout(timer);
-  }, [content, storageKey]);
+  }, [content, tileId, loading]);
 
   return (
     <div className="h-full flex flex-col rounded-lg overflow-hidden bg-transparent">
@@ -57,15 +73,21 @@ export function NotesTile({ tileId, onClose }: NotesTileProps) {
         </button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 p-4">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="w-full h-full resize-none border-none outline-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-          placeholder="Start typing your notes..."
-          aria-label="Notes content"
-        />
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+        )}
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+        ) : (
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full h-full resize-none border-none outline-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+            placeholder="Start typing your notes… (shared with everyone on this grid)"
+            aria-label="Notes content"
+          />
+        )}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   getNotificationsEnabled,
   setNotificationsEnabled,
 } from "@/lib/settings";
+import { UserAvatar } from "./UserAvatar";
 
 export interface SettingsModalProps {
   onClose: () => void;
@@ -14,15 +15,91 @@ export interface SettingsModalProps {
   userIsAdmin?: boolean;
 }
 
+interface ProfileData {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  avatarData?: string | null;
+  bio?: string | null;
+  funFacts?: string | null;
+}
+
 export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: SettingsModalProps) {
   const [openaiKey, setOpenaiKey] = useState("");
   const [notificationsEnabled, setNotificationsEnabledState] = useState(false);
   const [openaiKeySaved, setOpenaiKeySaved] = useState(false);
 
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileDisplayName, setProfileDisplayName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileFunFacts, setProfileFunFacts] = useState("");
+  const [profileAvatarData, setProfileAvatarData] = useState<string | null>(null);
+
   useEffect(() => {
     setOpenaiKey(getStoredOpenAIKey() ?? "");
     setNotificationsEnabledState(getNotificationsEnabled());
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setProfile(data);
+        setProfileDisplayName(data.displayName ?? "");
+        setProfileBio(data.bio ?? "");
+        setProfileFunFacts(data.funFacts ?? "");
+        setProfileAvatarData(data.avatarData ?? null);
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileSaved(false);
+    try {
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: profileDisplayName.trim() || null,
+          bio: profileBio.trim() || null,
+          funFacts: profileFunFacts.trim() || null,
+          avatarData: profileAvatarData || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      const data = await res.json();
+      setProfile(data);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch {
+      // could set error state
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result as string;
+      setProfileAvatarData(data);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveOpenAIKey = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +138,88 @@ export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: S
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {/* Profile */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              Profile
+            </h3>
+            {profileLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+            ) : (
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <UserAvatar
+                      user={{
+                        email: profile?.email,
+                        displayName: profileDisplayName || profile?.email,
+                        avatarData: profileAvatarData ?? profile?.avatarData ?? null,
+                      }}
+                      size="lg"
+                    />
+                    <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 hover:opacity-100 transition-opacity cursor-pointer text-white text-xs">
+                      Change
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={handleAvatarFile}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Display name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileDisplayName}
+                      onChange={(e) => setProfileDisplayName(e.target.value)}
+                      placeholder={profile?.email?.split("@")[0] ?? "Name"}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Shown in messages, grids, and DMs.
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Bio
+                  </label>
+                  <textarea
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    placeholder="A short bio..."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fun facts
+                  </label>
+                  <textarea
+                    value={profileFunFacts}
+                    onChange={(e) => setProfileFunFacts(e.target.value)}
+                    placeholder="Hobbies, interests, etc."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm resize-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                  >
+                    {profileSaving ? "Saving..." : profileSaved ? "Saved" : "Save profile"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+
           {/* API Keys */}
           <section>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">

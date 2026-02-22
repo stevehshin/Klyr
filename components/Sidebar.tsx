@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 
 export interface GridInfo {
   id: string;
@@ -49,6 +48,9 @@ export interface SidebarProps {
   onSelectDM?: (dm: { id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }) => void;
   hasGrid?: boolean;
   userEmail: string;
+  /** Optional: display name and avatar; if not provided, Sidebar may fetch from /api/users/me */
+  userDisplayName?: string | null;
+  userAvatarData?: string | null;
   onOpenThemeCustomizer: () => void;
   onOpenSettings?: () => void;
   /** Mobile/tablet: render as overlay with backdrop; show close button and call onClose when selecting or closing */
@@ -78,11 +80,29 @@ export function Sidebar({
   onSelectDM,
   hasGrid = false,
   userEmail,
+  userDisplayName = null,
+  userAvatarData = null,
   onOpenThemeCustomizer,
   onOpenSettings,
   isOverlay = false,
   onClose,
 }: SidebarProps) {
+  const [profile, setProfile] = useState<{ displayName?: string | null; avatarData?: string | null } | null>(null);
+  useEffect(() => {
+    if (userDisplayName !== undefined && userAvatarData !== undefined) return;
+    let cancelled = false;
+    fetch("/api/users/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setProfile({ displayName: data.displayName, avatarData: data.avatarData });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userDisplayName, userAvatarData]);
+
+  const displayName = userDisplayName ?? profile?.displayName ?? userEmail.split("@")[0] ?? userEmail;
+  const avatarData = userAvatarData ?? profile?.avatarData ?? null;
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState<"grids" | "channels" | "dms">("grids");
   const [editingGridId, setEditingGridId] = useState<string | null>(null);
@@ -125,8 +145,8 @@ export function Sidebar({
           aria-label="Navigation menu"
         >
           <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Image src="/logo.svg" alt="Klyr" width={40} height={40} className="h-10 w-auto object-contain" />
+            <div className="flex items-center justify-center min-h-[40px] overflow-visible flex-shrink-0">
+              <img src="/klyr-logo.png" alt="Klyr" className="max-h-10 w-auto object-contain" />
             </div>
             <button
               onClick={onClose}
@@ -350,8 +370,8 @@ export function Sidebar({
     <div className="w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col transition-[width,opacity] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]">
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="Klyr" width={40} height={40} className="h-10 w-auto object-contain" />
+        <div className="flex items-center justify-center min-h-[40px] overflow-visible flex-shrink-0">
+          <img src="/klyr-logo.png" alt="Klyr" className="max-h-10 w-auto object-contain" />
         </div>
         <button
           onClick={() => setIsCollapsed(true)}
@@ -813,11 +833,15 @@ export function Sidebar({
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-semibold">
-              {userEmail.charAt(0).toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 overflow-hidden">
+              {avatarData ? (
+                <img src={avatarData} alt="" className="w-full h-full object-cover" />
+              ) : (
+                displayName.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{userEmail}</p>
+              <p className="text-sm font-medium text-white truncate">{displayName}</p>
               <p className="text-xs text-gray-400">Online</p>
             </div>
             <form action="/api/auth/logout" method="POST">

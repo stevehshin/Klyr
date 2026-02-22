@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const users = await prisma.user.findMany({
     where: { id: { not: session.userId } },
-    select: { id: true, email: true },
+    select: { id: true, email: true, displayName: true, avatarData: true },
     orderBy: { email: "asc" },
   });
 

@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { UserAvatar } from "./UserAvatar";
 
 export interface SelectConversationModalProps {
   onClose: () => void;
   onSelect: (conversationId: string, conversationName: string) => void;
 }
 
-type UserOption = { id: string; email: string };
+type UserOption = { id: string; email: string; displayName?: string | null; avatarData?: string | null };
 
 export function SelectConversationModal({ onClose, onSelect }: SelectConversationModalProps) {
   const [type, setType] = useState<"direct" | "group">("direct");
@@ -42,7 +43,8 @@ export function SelectConversationModal({ onClose, onSelect }: SelectConversatio
   const filteredUsers = userSearch.trim()
     ? users.filter(
         (u) =>
-          u.email.toLowerCase().includes(userSearch.toLowerCase())
+          u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+          (u.displayName && u.displayName.toLowerCase().includes(userSearch.toLowerCase()))
       )
     : users;
 
@@ -157,9 +159,12 @@ export function SelectConversationModal({ onClose, onSelect }: SelectConversatio
                       key={user.id}
                       type="button"
                       onClick={() => handleSelectUser(user)}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm text-gray-900 dark:text-white"
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm text-gray-900 dark:text-white flex items-center gap-2"
                     >
-                      {user.email}
+                      <UserAvatar user={user} size="sm" />
+                      <span className="truncate">
+                        {user.displayName?.trim() || user.email.split("@")[0] || user.email}
+                      </span>
                     </button>
                   ))
                 )}

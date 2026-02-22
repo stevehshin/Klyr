@@ -15,6 +15,10 @@ model User {
   id                         String           @id @default(cuid())
   email                      String           @unique
   passwordHash               String
+  displayName                String?          // preferred display name (defaults to email prefix)
+  avatarData                 String?          // data URL or base64 for profile image
+  bio                        String?          // short bio / personal details
+  funFacts                   String?          // fun facts (plain text or JSON)
   isAdmin                    Boolean          @default(false)
   createdAt                  DateTime         @default(now())
   googleCalendarRefreshToken String?
@@ -102,7 +106,7 @@ model Tile {
   id             String    @id @default(cuid())
   gridId         String
   grid           Grid      @relation(fields: [gridId], references: [id], onDelete: Cascade)
-  type           String    // "notes", "dm", "channel", "tasks", "links", "calendar"
+  type           String    // "notes", "dm", "channel", "tasks", "links", "calendar", "files"
   x              Int
   y              Int
   w              Int
@@ -114,9 +118,31 @@ model Tile {
   conversationId String?   // For DM tiles and DM call tiles
   callRoomLabel  String?   // For call tiles - display label (e.g. "Grid call", "#general")
   messages       Message[]
+  noteContent    TileNote? // shared notes content (for type "notes")
+  links          TileLink[] // shared links (for type "links")
   createdAt      DateTime  @default(now())
   
   @@index([channelId])
+}
+
+model TileNote {
+  id       String @id @default(cuid())
+  tileId   String @unique
+  tile     Tile   @relation(fields: [tileId], references: [id], onDelete: Cascade)
+  content  String @default("")
+  updatedAt DateTime @updatedAt
+  @@index([tileId])
+}
+
+model TileLink {
+  id     String @id @default(cuid())
+  tileId String
+  tile   Tile   @relation(fields: [tileId], references: [id], onDelete: Cascade)
+  title  String
+  url    String
+  sortOrder Int @default(0)
+  createdAt DateTime @default(now())
+  @@index([tileId])
 }
 
 model Message {

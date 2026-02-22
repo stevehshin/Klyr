@@ -8,6 +8,7 @@ import {
   generateEncryptionKey,
 } from "@/lib/crypto";
 import { EmojiPicker } from "./EmojiPicker";
+import { UserAvatar } from "./UserAvatar";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
 
 export interface ChannelViewProps {
@@ -23,7 +24,10 @@ interface Message {
   encryptedContent: string;
   createdAt: string;
   user: {
+    id?: string;
     email: string;
+    displayName?: string | null;
+    avatarData?: string | null;
   };
   decryptedContent?: string;
   decryptError?: boolean;
@@ -192,13 +196,11 @@ export function ChannelView({
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                {msg.user.email.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar user={msg.user} size="md" />
               <div className="flex-1">
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="font-semibold text-gray-900 dark:text-white text-sm">
-                    {msg.user.email}
+                    {msg.user.displayName?.trim() || msg.user.email?.split("@")[0] || msg.user.email}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(msg.createdAt).toLocaleTimeString()}
