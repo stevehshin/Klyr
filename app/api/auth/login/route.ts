@@ -3,12 +3,13 @@ import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/auth";
 
+const LOGIN_TIMEOUT_MS = 10_000;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
 
-    // Validation
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password are required" },
@@ -16,38 +17,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const result = await Promise.race([
+      (async () => {
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
+        if (!user) {
+          return NextResponse.json(
+            { error: "Invalid email or password" },
+            { status: 401 }
+          );
+        }
+        const passwordValid = await compare(password, user.passwordHash);
+        if (!passwordValid) {
+          return NextResponse.json(
+            { error: "Invalid email or password" },
+            { status: 401 }
+          );
+        }
+        await createSession(user.id);
+        return NextResponse.json({
+          success: true,
+          user: { id: user.id, email: user.email },
+        });
+      })(),
+      new Promise<NextResponse>((resolve) =>
+        setTimeout(
+          () =>
+            resolve(
+              NextResponse.json(
+                {
+                  error:
+                    "Database did not respond in time. Set DATABASE_URL and DIRECT_URL in Vercel (Environment Variables), then run: npx prisma db push",
+                },
+                { status: 503 }
+              )
+            ),
+          LOGIN_TIMEOUT_MS
+        )
+      ),
+    ]);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 }
-      );
-    }
-
-    // Verify password
-    const passwordValid = await compare(password, user.passwordHash);
-
-    if (!passwordValid) {
-      return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 }
-      );
-    }
-
-    // Create session
-    await createSession(user.id);
-
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-      },
-    });
+    return result;
   } catch (error) {
     console.error("Login error:", error);
     const msg = (error as Error)?.message ?? String(error);

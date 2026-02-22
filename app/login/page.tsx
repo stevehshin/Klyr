@@ -25,13 +25,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       let data: { error?: string } = {};
       try {
@@ -46,11 +50,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Login successful, redirect to grid
       router.push("/grid");
     } catch (err) {
       console.error("Login error:", err);
-      setError("Cannot reach server. Check your connection and try again.");
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      setError(
+        isAbort
+          ? "Request timed out. The database may be unreachable—set DATABASE_URL and DIRECT_URL in Vercel and run: npx prisma db push"
+          : "Cannot reach server. Check your connection and try again."
+      );
       setLoading(false);
     }
   };
