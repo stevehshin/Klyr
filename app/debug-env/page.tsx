@@ -6,10 +6,25 @@ export default function DebugEnvPage() {
   const [health, setHealth] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    fetch("/api/tiles/health")
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 12000);
+    fetch("/api/tiles/health", { signal: ctrl.signal })
       .then((r) => r.json())
-      .then(setHealth)
-      .catch((e) => setHealth({ error: String(e) }));
+      .then((data) => {
+        clearTimeout(timeout);
+        setHealth(data);
+      })
+      .catch((e) => {
+        clearTimeout(timeout);
+        setHealth({
+          ok: false,
+          error: e.name === "AbortError" ? "Request timed out (12s) — API route may be hanging on Vercel" : String(e),
+        });
+      });
+    return () => {
+      clearTimeout(timeout);
+      ctrl.abort();
+    };
   }, []);
 
   return (
