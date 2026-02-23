@@ -91,7 +91,11 @@ So Vercel can see and deploy your app, the code needs to be on GitHub.
    ./node_modules/.bin/prisma db push
    ```
 
-5. When it finishes without errors, you’re done. Neon now has the tables (User, Grid, Tile, etc.) and your app can use them. You only need to do this once per database.
+5. When it finishes without errors, you’re done. Neon now has the tables (User, Grid, Tile, etc.) and your app can use them.
+
+**Important:** Use the **same** Neon URLs in `.env` that you will use in Vercel (Step 4). The database you push to here is the one your live app uses.
+
+**After schema changes:** If you pull new code that adds features (Profile, shared Notes/Links, display names, avatars, etc.), you must run `npm run db:deploy` again **after** updating `.env` with your production Neon URLs. Otherwise the new tables/columns won’t exist and tiles will stay on “Loading…”.
 
 ---
 
@@ -176,6 +180,17 @@ No need to click “Deploy” in Vercel unless you want to re-run a build for th
 
 - **Database errors**  
   Double-check that the Neon URLs in Vercel are correct and that you ran **Step 3** so the database tables exist.
+
+- **Tiles stuck on “Loading…” / Profile, display name, avatar, shared Notes & Links not showing**  
+  Your production Neon database is missing the latest tables and columns. Run the schema sync:
+
+  1. In `.env`, set `DATABASE_URL` and `DIRECT_URL` to your **production** Neon URLs (the same ones in Vercel).
+  2. From the klyr folder, run:
+     ```bash
+     npm run db:deploy
+     ```
+  3. Redeploy on Vercel (or push a small change to trigger a new deploy).
+  4. Hard-refresh the app (Ctrl+Shift+R or Cmd+Shift+R) to clear cache.
 
 ---
 
