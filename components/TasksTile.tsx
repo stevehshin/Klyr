@@ -161,10 +161,20 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
   );
 
   const fetchProjects = useCallback(async () => {
-    const res = await fetch(`/api/projects?gridId=${encodeURIComponent(gridId)}`);
-    if (res.ok) {
-      const data = await res.json();
-      setProjects(data.projects ?? []);
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const res = await fetch(`/api/projects?gridId=${encodeURIComponent(gridId)}`, {
+        credentials: "include",
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data.projects ?? []);
+      }
+    } catch {
+      clearTimeout(timeout);
     }
   }, [gridId]);
 
@@ -174,27 +184,37 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
     if (filterAssignee && filterAssignee !== "__all__") params.set("assigneeUserId", filterAssignee);
     if (filterProject) params.set("projectId", filterProject);
     if (filterVisibility) params.set("visibility", filterVisibility);
-    const res = await fetch(`/api/tasks?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      let list: Task[] = data.tasks ?? [];
-      if (filterDue === "overdue") {
-        const now = new Date().toISOString();
-        list = list.filter((t: Task) => t.dueAt && t.dueAt < now && t.status !== "DONE");
-      } else if (filterDue === "today") {
-        const today = new Date().toISOString().slice(0, 10);
-        list = list.filter((t: Task) => t.dueAt && t.dueAt.slice(0, 10) === today);
-      } else if (filterDue === "week") {
-        const now = new Date();
-        const weekEnd = new Date(now);
-        weekEnd.setDate(weekEnd.getDate() + 7);
-        list = list.filter((t: Task) => {
-          if (!t.dueAt) return false;
-          const d = new Date(t.dueAt);
-          return d >= now && d <= weekEnd;
-        });
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const res = await fetch(`/api/tasks?${params.toString()}`, {
+        credentials: "include",
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        let list: Task[] = data.tasks ?? [];
+        if (filterDue === "overdue") {
+          const now = new Date().toISOString();
+          list = list.filter((t: Task) => t.dueAt && t.dueAt < now && t.status !== "DONE");
+        } else if (filterDue === "today") {
+          const today = new Date().toISOString().slice(0, 10);
+          list = list.filter((t: Task) => t.dueAt && t.dueAt.slice(0, 10) === today);
+        } else if (filterDue === "week") {
+          const now = new Date();
+          const weekEnd = new Date(now);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+          list = list.filter((t: Task) => {
+            if (!t.dueAt) return false;
+            const d = new Date(t.dueAt);
+            return d >= now && d <= weekEnd;
+          });
+        }
+        setTasks(list);
       }
-      setTasks(list);
+    } catch {
+      clearTimeout(timeout);
     }
   }, [gridId, filterStatus, filterAssignee, filterProject, filterVisibility, filterDue]);
 

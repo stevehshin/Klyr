@@ -74,10 +74,19 @@ export function CalendarTile({ gridId, onClose }: CalendarTileProps) {
     setLoading(true);
     setError(null);
     try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
       const [eventsRes, tasksRes] = await Promise.all([
-        fetch(`/api/grid/calendar?gridId=${encodeURIComponent(gridId)}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`),
-        fetch(`/api/tasks?gridId=${encodeURIComponent(gridId)}`),
+        fetch(`/api/grid/calendar?gridId=${encodeURIComponent(gridId)}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
+          credentials: "include",
+          signal: ctrl.signal,
+        }),
+        fetch(`/api/tasks?gridId=${encodeURIComponent(gridId)}`, {
+          credentials: "include",
+          signal: ctrl.signal,
+        }),
       ]);
+      clearTimeout(timeout);
       const eventsData = await eventsRes.json();
       const tasksData = await tasksRes.json();
       if (!eventsRes.ok) throw new Error(eventsData.error || "Failed to load events");
@@ -93,7 +102,13 @@ export function CalendarTile({ gridId, onClose }: CalendarTileProps) {
         })
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load calendar");
+      const msg =
+        e instanceof Error
+          ? e.name === "AbortError"
+            ? "Request timed out. Check your connection."
+            : e.message
+          : "Failed to load calendar";
+      setError(msg);
       setEvents([]);
       setTasks([]);
     } finally {

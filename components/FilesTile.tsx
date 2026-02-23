@@ -59,12 +59,24 @@ export function FilesTile({ gridId, onClose }: FilesTileProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/grid/files?gridId=${encodeURIComponent(gridId)}`);
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(`/api/grid/files?gridId=${encodeURIComponent(gridId)}`, {
+        credentials: "include",
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load files");
       setFiles(data.files ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load files");
+      const msg =
+        e instanceof Error
+          ? e.name === "AbortError"
+            ? "Request timed out. Check your connection."
+            : e.message
+          : "Failed to load files";
+      setError(msg);
       setFiles([]);
     } finally {
       setLoading(false);

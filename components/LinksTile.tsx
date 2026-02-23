@@ -24,12 +24,24 @@ export function LinksTile({ tileId, onClose }: LinksTileProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tiles/${tileId}/links`);
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(`/api/tiles/${tileId}/links`, {
+        credentials: "include",
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load links");
       setLinks(data.links ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load links");
+      const msg =
+        e instanceof Error
+          ? e.name === "AbortError"
+            ? "Request timed out. Check your connection."
+            : e.message
+          : "Failed to load links";
+      setError(msg);
       setLinks([]);
     } finally {
       setLoading(false);

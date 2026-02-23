@@ -63,7 +63,13 @@ export function ChannelTile({
       if (!hasKey) return;
 
       try {
-        const response = await fetch(`/api/channels/${channelId}/messages`);
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 15000);
+        const response = await fetch(`/api/channels/${channelId}/messages`, {
+          credentials: "include",
+          signal: ctrl.signal,
+        });
+        clearTimeout(timeout);
         if (response.ok) {
           const data = await response.json();
           const messagesWithDecryption = await Promise.all(

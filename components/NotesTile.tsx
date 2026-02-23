@@ -16,12 +16,24 @@ export function NotesTile({ tileId, onClose }: NotesTileProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tiles/${tileId}/notes`);
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(`/api/tiles/${tileId}/notes`, {
+        credentials: "include",
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load notes");
       setContent(data.content ?? "");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load notes");
+      const msg =
+        e instanceof Error
+          ? e.name === "AbortError"
+            ? "Request timed out. Check your connection."
+            : e.message
+          : "Failed to load notes";
+      setError(msg);
     } finally {
       setLoading(false);
     }
