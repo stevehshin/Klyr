@@ -4,6 +4,8 @@
  */
 import { NextResponse } from "next/server";
 
+export const maxDuration = 15;
+
 export async function GET() {
   const checks: Record<string, unknown> = {
     database_url_set: !!process.env.DATABASE_URL,

@@ -3,6 +3,8 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { neon } from "@neondatabase/serverless";
 import { canViewGridNeon } from "@/lib/neonDb";
 
+export const maxDuration = 15;
+
 /** GET /api/grid/files?gridId=xxx - List files for grid (shared with everyone who can view grid) */
 export async function GET(request: NextRequest) {
   try {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { neon } from "@neondatabase/serverless";
 
+export const maxDuration = 15;
+
 // GET - Fetch messages for a channel
 export async function GET(
   request: NextRequest,

@@ -3,6 +3,8 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { neon } from "@neondatabase/serverless";
 import { canViewGridNeon, canEditGridNeon } from "@/lib/neonDb";
 
+export const maxDuration = 15;
+
 /** GET /api/grid/calendar?gridId=xxx&timeMin=ISO&timeMax=ISO */
 export async function GET(request: NextRequest) {
   try {

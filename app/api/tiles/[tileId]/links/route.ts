@@ -7,6 +7,8 @@ import {
   canEditGridNeon,
 } from "@/lib/neonDb";
 
+export const maxDuration = 15;
+
 /** GET /api/tiles/[tileId]/links - List shared links (anyone with grid view) */
 export async function GET(
   _req: NextRequest,
