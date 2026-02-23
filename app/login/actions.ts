@@ -2,7 +2,7 @@
 
 import { compare } from "bcryptjs";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { neon } from "@neondatabase/serverless";
 import { createSession } from "@/lib/auth";
 
 export async function loginAction(
@@ -17,20 +17,25 @@ export async function loginAction(
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      return { error: "DATABASE_URL is not configured" };
+    }
+
+    const sql = neon(connectionString);
+    const rows = await sql`SELECT id, "passwordHash" FROM "User" WHERE email = ${email} LIMIT 1`;
+    const user = rows[0];
 
     if (!user) {
       return { error: "Invalid email or password" };
     }
 
-    const passwordValid = await compare(password, user.passwordHash);
+    const passwordValid = await compare(password, user.passwordHash as string);
     if (!passwordValid) {
       return { error: "Invalid email or password" };
     }
 
-    await createSession(user.id);
+    await createSession(user.id as string);
   } catch (error) {
     console.error("Login error:", error);
     const msg = (error as Error)?.message ?? String(error);
