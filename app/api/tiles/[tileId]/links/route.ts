@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { canViewGrid, canEditGrid } from "@/lib/gridAuth";
-
-async function getTileGridId(tileId: string): Promise<string | null> {
-  const tile = await prisma.tile.findUnique({
-    where: { id: tileId },
-    select: { gridId: true },
-  });
-  return tile?.gridId ?? null;
-}
+import { neon } from "@neondatabase/serverless";
+import {
+  getTileGridIdNeon,
+  canViewGridNeon,
+  canEditGridNeon,
+} from "@/lib/neonDb";
 
 /** GET /api/tiles/[tileId]/links - List shared links (anyone with grid view) */
 export async function GET(
@@ -20,16 +16,22 @@ export async function GET(
     const session = await getSessionFromRequest(_req);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { tileId } = await params;
-    const gridId = await getTileGridId(tileId);
+    const gridId = await getTileGridIdNeon(tileId);
     if (!gridId) return NextResponse.json({ error: "Tile not found" }, { status: 404 });
-    if (!(await canViewGrid(session.userId, gridId)))
+    if (!(await canViewGridNeon(session.userId, gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const links = await prisma.tileLink.findMany({
-      where: { tileId },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, title: true, url: true },
-    });
+    const sql = neon(process.env.DATABASE_URL!);
+    const rows = await sql`
+      SELECT id, title, url FROM "TileLink"
+      WHERE "tileId" = ${tileId}
+      ORDER BY "sortOrder" ASC, "createdAt" ASC
+    `;
+    const links = (rows as { id: string; title: string; url: string }[]).map((r) => ({
+      id: r.id,
+      title: r.title,
+      url: r.url,
+    }));
     return NextResponse.json({ links });
   } catch (e) {
     console.error("Tile links GET:", e);
@@ -46,9 +48,9 @@ export async function POST(
     const session = await getSessionFromRequest(req);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { tileId } = await params;
-    const gridId = await getTileGridId(tileId);
+    const gridId = await getTileGridIdNeon(tileId);
     if (!gridId) return NextResponse.json({ error: "Tile not found" }, { status: 404 });
-    if (!(await canEditGrid(session.userId, gridId)))
+    if (!(await canEditGridNeon(session.userId, gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
@@ -57,14 +59,14 @@ export async function POST(
     if (url && !url.startsWith("http")) url = "https://" + url;
     if (!title || !url) return NextResponse.json({ error: "title and url required" }, { status: 400 });
 
-    const maxOrder = await prisma.tileLink.aggregate({
-      where: { tileId },
-      _max: { sortOrder: true },
-    });
-    const link = await prisma.tileLink.create({
-      data: { tileId, title: title.slice(0, 500), url: url.slice(0, 2000), sortOrder: (maxOrder._max.sortOrder ?? 0) + 1 },
-      select: { id: true, title: true, url: true },
-    });
+    const sql = neon(process.env.DATABASE_URL!);
+    const [maxRow] = await sql`SELECT COALESCE(MAX("sortOrder"), 0) as m FROM "TileLink" WHERE "tileId" = ${tileId}`;
+    const sortOrder = ((maxRow as { m: number })?.m ?? 0) + 1;
+    const [link] = await sql`
+      INSERT INTO "TileLink" (id, "tileId", title, url, "sortOrder")
+      VALUES (gen_random_uuid()::text, ${tileId}, ${title.slice(0, 500)}, ${url.slice(0, 2000)}, ${sortOrder})
+      RETURNING id, title, url
+    `;
     return NextResponse.json({ link });
   } catch (e) {
     console.error("Tile links POST:", e);
@@ -83,12 +85,13 @@ export async function DELETE(
     const { tileId } = await params;
     const linkId = req.nextUrl.searchParams.get("id");
     if (!linkId) return NextResponse.json({ error: "id required" }, { status: 400 });
-    const gridId = await getTileGridId(tileId);
+    const gridId = await getTileGridIdNeon(tileId);
     if (!gridId) return NextResponse.json({ error: "Tile not found" }, { status: 404 });
-    if (!(await canEditGrid(session.userId, gridId)))
+    if (!(await canEditGridNeon(session.userId, gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    await prisma.tileLink.deleteMany({ where: { id: linkId, tileId } });
+    const sql = neon(process.env.DATABASE_URL!);
+    await sql`DELETE FROM "TileLink" WHERE id = ${linkId} AND "tileId" = ${tileId}`;
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Tile links DELETE:", e);
