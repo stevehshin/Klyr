@@ -249,11 +249,11 @@ export async function suggestTilesForGrid(
       label: "Links",
       reason: "No Links tile — save references in one place.",
     });
-  if (!types.has("call"))
+  if (!types.has("room") && !types.has("call") && !types.has("loop_room"))
     suggestions.push({
-      type: "call",
-      label: "Call",
-      reason: "Add a Call tile for quick meetings in this grid.",
+      type: "room",
+      label: "The Room",
+      reason: "Add The Room for drop-in voice (and optional video) in this grid.",
     });
 
   return suggestions.slice(0, 4);

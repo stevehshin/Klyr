@@ -6,6 +6,7 @@ import {
   decryptMessage,
   getEncryptionKey,
   generateEncryptionKey,
+  syncEncryptionKeyFromProfile,
 } from "@/lib/crypto";
 import { UserAvatar } from "./UserAvatar";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
@@ -42,6 +43,7 @@ export function DMTile({ tileId, conversationId, conversationName, userEmail, on
 
   useEffect(() => {
     const checkKey = async () => {
+      await syncEncryptionKeyFromProfile();
       let key = getEncryptionKey();
       if (!key) {
         key = await generateEncryptionKey();

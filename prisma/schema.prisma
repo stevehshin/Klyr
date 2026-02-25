@@ -19,6 +19,7 @@ model User {
   avatarData                 String?          // data URL or base64 for profile image
   bio                        String?          // short bio / personal details
   funFacts                   String?          // fun facts (plain text or JSON)
+  encryptionKey              String?          // JWK for cross-device message decryption
   isAdmin                    Boolean          @default(false)
   createdAt                  DateTime         @default(now())
   googleCalendarRefreshToken String?

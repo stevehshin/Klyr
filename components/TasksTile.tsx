@@ -243,28 +243,34 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           gridId,
           ...payload,
           visibility: payload.visibility ?? "SHARED",
         }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setTasks((prev) => [data.task, ...prev]);
         setQuickAddTitle("");
         return data.task;
       }
+      console.error("Create task failed:", data.error || res.status);
+      return null;
+    } catch (e) {
+      console.error("Create task error:", e);
+      return null;
     } finally {
       setCreating(false);
     }
-    return null;
   };
 
   const updateTask = async (taskId: string, patch: Partial<Task>) => {
     const res = await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(patch),
     });
     if (res.ok) {
@@ -277,7 +283,7 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
   };
 
   const deleteTask = async (taskId: string) => {
-    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE", credentials: "include" });
     if (res.ok) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       if (detailTaskId === taskId) setDetailTaskId(null);
@@ -286,7 +292,7 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
   };
 
   const fetchComments = useCallback(async (taskId: string) => {
-    const res = await fetch(`/api/tasks/${taskId}/comments`);
+    const res = await fetch(`/api/tasks/${taskId}/comments`, { credentials: "include" });
     if (res.ok) {
       const data = await res.json();
       setComments(data.comments ?? []);
@@ -311,6 +317,7 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
       const res = await fetch(`/api/tasks/${detailTaskId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ encryptedContent: encrypted }),
       });
       if (res.ok) {

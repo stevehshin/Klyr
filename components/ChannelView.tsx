@@ -6,6 +6,7 @@ import {
   decryptMessage,
   getEncryptionKey,
   generateEncryptionKey,
+  syncEncryptionKeyFromProfile,
 } from "@/lib/crypto";
 import { EmojiPicker } from "./EmojiPicker";
 import { UserAvatar } from "./UserAvatar";
@@ -48,9 +49,10 @@ export function ChannelView({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Check for encryption key
+  // Check for encryption key (sync from profile on new devices)
   useEffect(() => {
     const checkKey = async () => {
+      await syncEncryptionKeyFromProfile();
       let key = getEncryptionKey();
       if (!key) {
         key = await generateEncryptionKey();

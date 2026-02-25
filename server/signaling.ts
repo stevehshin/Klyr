@@ -1,8 +1,12 @@
 /**
  * Signaling server for video calls.
  * Run with: npm run signaling
+ *
+ * - WebSocket: signaling (join, leave, offer, answer, ice-candidate, mute, screen-share)
+ * - HTTP GET /presence?roomId=X: returns JSON { participants: ParticipantInfo[] }
  */
 
+import * as http from "http";
 import { WebSocketServer } from "ws";
 import type { SignalingEvent, ServerEvent, ParticipantInfo } from "../lib/call/signaling-types";
 
@@ -56,7 +60,29 @@ function sendTo(conn: ClientConnection, event: ServerEvent) {
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+const server = http.createServer((req, res) => {
+  if (req.method === "GET" && req.url?.startsWith("/presence")) {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    const roomId = u.searchParams.get("roomId");
+    if (!roomId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "roomId required" }));
+      return;
+    }
+    const room = rooms.get(roomId);
+    const participants = room ? Array.from(room.values()).map(toParticipantInfo) : [];
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    });
+    res.end(JSON.stringify({ participants }));
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   let conn: ClientConnection | null = null;
@@ -164,4 +190,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-console.log(`Signaling server listening on ws://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Signaling server listening on ws://localhost:${PORT}`);
+  console.log(`Presence API: http://localhost:${PORT}/presence?roomId=...`);
+});

@@ -7,9 +7,9 @@ import { LinksTile } from "@/components/LinksTile";
 import { FilesTile } from "@/components/FilesTile";
 import { CalendarTile } from "@/components/CalendarTile";
 import { ChannelTile } from "@/components/ChannelTile";
+import { TheRoomTile } from "@/components/TheRoomTile";
 import { CallTile } from "@/components/CallTile";
 import { SummaryTile } from "@/components/SummaryTile";
-import { LoopRoomTile } from "@/components/LoopRoomTile";
 import type { TileData } from "@/components/Grid";
 import type { GridMember } from "@/components/Grid";
 
@@ -50,8 +50,17 @@ export function TileRenderer({ tile, gridId, userId, userEmail, gridMembers = []
       <CallTile
         tileId={tile.id}
         roomId={tile.roomId || tile.channelId || tile.conversationId || gridId}
-        roomLabel={tile.roomLabel || "Call"}
-        userEmail={userEmail}
+        roomLabel={tile.roomLabel ?? tile.callRoomLabel ?? "Call"}
+        userEmail={userEmail ?? undefined}
+        onClose={() => onClose(tile.id)}
+      />
+    );
+  if (tile.type === "loop_room" || tile.type === "room")
+    return (
+      <TheRoomTile
+        tileId={tile.id}
+        roomLabel={tile.roomLabel ?? tile.callRoomLabel ?? "The Room"}
+        userEmail={userEmail ?? undefined}
         onClose={() => onClose(tile.id)}
       />
     );
@@ -71,15 +80,6 @@ export function TileRenderer({ tile, gridId, userId, userEmail, gridMembers = []
         userId={userId}
         userEmail={userEmail ?? ""}
         gridMembers={gridMembers}
-        onClose={() => onClose(tile.id)}
-      />
-    );
-  if (tile.type === "loop_room")
-    return (
-      <LoopRoomTile
-        tileId={tile.id}
-        roomLabel={tile.roomLabel ?? "Loop room"}
-        userEmail={userEmail ?? undefined}
         onClose={() => onClose(tile.id)}
       />
     );

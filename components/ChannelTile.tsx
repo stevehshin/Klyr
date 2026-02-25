@@ -6,6 +6,7 @@ import {
   decryptMessage,
   getEncryptionKey,
   generateEncryptionKey,
+  syncEncryptionKeyFromProfile,
 } from "@/lib/crypto";
 import { UserAvatar } from "./UserAvatar";
 
@@ -45,9 +46,10 @@ export function ChannelTile({
   const [hasKey, setHasKey] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Check for encryption key
+  // Check for encryption key (sync from profile on new devices)
   useEffect(() => {
     const checkKey = async () => {
+      await syncEncryptionKeyFromProfile();
       let key = getEncryptionKey();
       if (!key) {
         key = await generateEncryptionKey();

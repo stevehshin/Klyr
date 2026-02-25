@@ -67,13 +67,18 @@ export async function POST(request: NextRequest) {
       tileData.callRoomLabel = (body.title || body.roomLabel || "Loop room").toString().trim().slice(0, 120);
     }
 
+    // The Room tiles: drop-in voice room (same as loop_room)
+    if (type === "room") {
+      tileData.callRoomLabel = (body.title || body.roomLabel || "The Room").toString().trim().slice(0, 120);
+    }
+
     const tile = await prisma.tile.create({
       data: tileData,
     });
 
     // Return tile with metadata for frontend
-    const effectiveRoomId = type === "loop_room" ? tile.id : (channelId ?? conversationId ?? gridId);
-    const effectiveRoomLabel = type === "loop_room" ? (tile.callRoomLabel ?? "Loop room") : (roomLabel ?? tile.callRoomLabel ?? (channelId ? `${channelEmoji || "📢"} #${channelName}` : conversationId ? `Call with ${conversationName}` : "Grid call"));
+    const effectiveRoomId = (type === "loop_room" || type === "room") ? tile.id : (channelId ?? conversationId ?? gridId);
+    const effectiveRoomLabel = (type === "loop_room" || type === "room") ? (tile.callRoomLabel ?? (type === "room" ? "The Room" : "Loop room")) : (roomLabel ?? tile.callRoomLabel ?? (channelId ? `${channelEmoji || "📢"} #${channelName}` : conversationId ? `Call with ${conversationName}` : "Grid call"));
     const tileWithMetadata = {
       ...tile,
       channelName,

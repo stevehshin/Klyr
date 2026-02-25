@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { canViewGrid, canEditGrid } from "@/lib/gridAuth";
+import { neon } from "@neondatabase/serverless";
+import { canViewGridNeon, canEditGridNeon } from "@/lib/neonDb";
+
+export const maxDuration = 15;
 
 /** GET /api/grid/files/[id]?download=1 - Get file for preview or download (inline vs attachment) */
 export async function GET(
@@ -10,28 +12,35 @@ export async function GET(
 ) {
   try {
     const session = await getSessionFromRequest(request);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
     const download = request.nextUrl.searchParams.get("download") === "1";
 
-    const file = await prisma.gridFile.findUnique({
-      where: { id },
-      select: { gridId: true, name: true, mimeType: true, size: true, data: true },
-    });
-    if (!file) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
+    const sql = neon(process.env.DATABASE_URL!);
+    const [row] = await sql`
+      SELECT "gridId", name, "mimeType", size, data FROM "GridFile" WHERE id = ${id} LIMIT 1
+    `;
+    if (!row) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
-    const canView = await canViewGrid(session.userId, file.gridId);
-    if (!canView) {
+    const file = row as { gridId: string; name: string; mimeType: string; size: number; data: unknown };
+    if (!(await canViewGridNeon(session.userId, file.gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
-    const buffer = Buffer.from(file.data);
+    let buffer: Buffer;
+    const d = file.data;
+    if (Buffer.isBuffer(d)) {
+      buffer = d;
+    } else if (d instanceof Uint8Array) {
+      buffer = Buffer.from(d);
+    } else if (typeof d === "string" && d.startsWith("\\x")) {
+      buffer = Buffer.from(d.slice(2), "hex");
+    } else if (typeof d === "object" && d !== null && "data" in d) {
+      buffer = Buffer.from((d as { data: number[] }).data);
+    } else {
+      buffer = Buffer.from(d as ArrayBuffer);
+    }
     const disposition = download ? `attachment; filename="${file.name.replace(/"/g, '\\"')}"` : "inline";
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": file.mimeType || "application/octet-stream",
@@ -52,25 +61,18 @@ export async function DELETE(
 ) {
   try {
     const session = await getSessionFromRequest(_request);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
 
-    const file = await prisma.gridFile.findUnique({
-      where: { id },
-      select: { gridId: true },
-    });
-    if (!file) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
+    const sql = neon(process.env.DATABASE_URL!);
+    const [row] = await sql`SELECT "gridId" FROM "GridFile" WHERE id = ${id} LIMIT 1`;
+    if (!row) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
-    const canEdit = await canEditGrid(session.userId, file.gridId);
-    if (!canEdit) {
+    const file = row as { gridId: string };
+    if (!(await canEditGridNeon(session.userId, file.gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
-    await prisma.gridFile.delete({ where: { id } });
+    await sql`DELETE FROM "GridFile" WHERE id = ${id}`;
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Grid file DELETE:", error);

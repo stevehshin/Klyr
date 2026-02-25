@@ -9,9 +9,9 @@ import { LinksTile } from "./LinksTile";
 import { FilesTile } from "./FilesTile";
 import { CalendarTile } from "./CalendarTile";
 import { ChannelTile } from "./ChannelTile";
+import { TheRoomTile } from "./TheRoomTile";
 import { CallTile } from "./CallTile";
 import { SummaryTile } from "./SummaryTile";
-import { LoopRoomTile } from "./LoopRoomTile";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
 import { TileMenu } from "./TileMenu";
 import { RestoreHiddenTilesModal } from "./RestoreHiddenTilesModal";
@@ -38,6 +38,7 @@ export interface TileData {
   conversationName?: string;
   roomId?: string;
   roomLabel?: string;
+  callRoomLabel?: string;
 }
 
 export interface GridInfo {
@@ -356,13 +357,13 @@ export function Grid({
       const d = (e as CustomEvent).detail as { taskId?: string; title?: string; gridId?: string };
       if (d.gridId !== gridId) return;
       const label = (d.title ? `${d.title} Room` : "Loop room").slice(0, 120);
-      handleAddTile("loop_room", { roomLabel: label });
+      handleAddTile("room", { roomLabel: label });
     };
     const onLoopFromEvent = (e: Event) => {
       const d = (e as CustomEvent).detail as { eventTitle?: string; gridId?: string };
       if (d.gridId !== gridId) return;
       const label = (d.eventTitle ? `${d.eventTitle} Room` : "Loop room").slice(0, 120);
-      handleAddTile("loop_room", { roomLabel: label });
+      handleAddTile("room", { roomLabel: label });
     };
     window.addEventListener("klyr-create-loop-from-task", onLoopFromTask);
     window.addEventListener("klyr-create-loop-from-event", onLoopFromEvent);
@@ -479,7 +480,16 @@ export function Grid({
           <CallTile
             tileId={tile.id}
             roomId={tile.roomId || tile.channelId || tile.conversationId || gridId}
-            roomLabel={tile.roomLabel || "Call"}
+            roomLabel={tile.roomLabel ?? tile.callRoomLabel ?? "Call"}
+            userEmail={userEmail}
+            onClose={() => handleCloseTile(tile.id)}
+          />
+        );
+      if (tile.type === "loop_room" || tile.type === "room")
+        return (
+          <TheRoomTile
+            tileId={tile.id}
+            roomLabel={tile.roomLabel ?? tile.callRoomLabel ?? "The Room"}
             userEmail={userEmail}
             onClose={() => handleCloseTile(tile.id)}
           />
@@ -500,15 +510,6 @@ export function Grid({
             userId={userId}
             userEmail={userEmail ?? ""}
             gridMembers={gridMembers}
-            onClose={() => handleCloseTile(tile.id)}
-          />
-        );
-      if (tile.type === "loop_room")
-        return (
-          <LoopRoomTile
-            tileId={tile.id}
-            roomLabel={tile.roomLabel ?? "Loop room"}
-            userEmail={userEmail ?? undefined}
             onClose={() => handleCloseTile(tile.id)}
           />
         );
@@ -639,7 +640,14 @@ export function Grid({
               <div className="absolute right-0 top-full mt-1 py-1.5 min-w-[200px] rounded-xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-lg z-[100]">
                 <button
                   onClick={() => {
-                    openCallInNewWindow(gridId, "Grid call", userEmail);
+                    openCallInNewWindow(gridId, "The Room", userEmail, { audioOnly: true, loopRoom: true });
+                    try {
+                      const key = "klyr-loop-joined";
+                      const raw = localStorage.getItem(key);
+                      const ids: string[] = raw ? JSON.parse(raw) : [];
+                      if (!ids.includes(gridId)) localStorage.setItem(key, JSON.stringify([...ids, gridId]));
+                    } catch {}
+                    window.dispatchEvent(new CustomEvent("klyr-loop-joined", { detail: { tileId: gridId, roomLabel: "The Room" } }));
                     setActionsOpen(false);
                   }}
                   className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 rounded-lg mx-1"
@@ -647,7 +655,7 @@ export function Grid({
                   <svg className="w-4 h-4 flex-shrink-0 text-primary-600" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
                   </svg>
-                  Start call
+                  Join The Room
                 </button>
                 <button
                   onClick={() => {

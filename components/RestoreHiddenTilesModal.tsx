@@ -37,6 +37,9 @@ function getTileLabel(tile: HiddenTile): string {
       return `💬 DM ${tile.conversationId?.slice(0, 8) || ""}`;
     case "call":
       return `📹 ${tile.roomLabel || "Call"}`;
+    case "loop_room":
+    case "room":
+      return `🎙 ${tile.roomLabel || "The Room"}`;
     case "summary":
       return "✨ Daily Summary";
     default:

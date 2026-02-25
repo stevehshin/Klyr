@@ -67,6 +67,7 @@ function TileTypeIcon({ type }: { type: string }) {
       );
     case "call":
     case "loop_room":
+    case "room":
       return (
         <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -321,7 +322,14 @@ export function MobileGridStack({
               <div className="absolute right-0 top-full mt-1 py-1.5 min-w-[200px] rounded-xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-lg z-[100]">
                 <button
                   onClick={() => {
-                    openCallInNewWindow(gridId, "Grid call", userEmail);
+                    openCallInNewWindow(gridId, "The Room", userEmail, { audioOnly: true, loopRoom: true });
+                    try {
+                      const key = "klyr-loop-joined";
+                      const raw = localStorage.getItem(key);
+                      const ids: string[] = raw ? JSON.parse(raw) : [];
+                      if (!ids.includes(gridId)) localStorage.setItem(key, JSON.stringify([...ids, gridId]));
+                    } catch {}
+                    window.dispatchEvent(new CustomEvent("klyr-loop-joined", { detail: { tileId: gridId, roomLabel: "The Room" } }));
                     setActionsOpen(false);
                   }}
                   className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 rounded-lg mx-1"
@@ -329,7 +337,7 @@ export function MobileGridStack({
                   <svg className="w-4 h-4 flex-shrink-0 text-primary-600" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
                   </svg>
-                  Start call
+                  Join The Room
                 </button>
                 <button
                   onClick={() => {

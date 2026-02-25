@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { SelectChannelModal } from "./SelectChannelModal";
 import { SelectConversationModal } from "./SelectConversationModal";
 import { SelectCallTypeModal } from "./SelectCallTypeModal";
-import type { CallTileMetadata } from "./SelectCallTypeModal";
 
 export interface TileMenuProps {
   gridId: string;
@@ -20,8 +19,8 @@ const TILE_TYPES = [
   { id: "summary", name: "Daily Summary", icon: "✨", description: "AI summary of new grid content" },
   { id: "dm", name: "Messages", icon: "💬", description: "Encrypted direct messages", needsSelection: true },
   { id: "channel", name: "Channel", icon: "📢", description: "Team channel conversation", needsSelection: true },
-  { id: "call", name: "Call", icon: "📹", description: "Video call", needsCallSelection: true },
-  { id: "loop_room", name: "Loop Room", icon: "🎙", description: "Opt-in voice room (join to talk)" },
+  { id: "room", name: "The Room", icon: "🎙", description: "Drop-in voice room — turn on camera if you want" },
+  { id: "call", name: "Call", icon: "📹", description: "Video call — channel or 1:1", needsCallSelection: true },
 ];
 
 export function TileMenu({ gridId, onSelectTileType }: TileMenuProps) {
@@ -42,19 +41,6 @@ export function TileMenu({ gridId, onSelectTileType }: TileMenuProps) {
     setIsOpen(false);
   };
 
-  const handleCallSelect = (metadata: CallTileMetadata) => {
-    onSelectTileType("call", {
-      roomId: metadata.roomId,
-      roomLabel: metadata.roomLabel,
-      channelId: metadata.channelId,
-      channelName: metadata.channelName,
-      channelEmoji: metadata.channelEmoji,
-      conversationId: metadata.conversationId,
-      conversationName: metadata.conversationName,
-    });
-    setShowCallModal(false);
-    setIsOpen(false);
-  };
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,6 +59,20 @@ export function TileMenu({ gridId, onSelectTileType }: TileMenuProps) {
     };
   }, [isOpen]);
 
+  const handleCallSelect = (metadata: { roomId: string; roomLabel: string; channelId?: string; channelName?: string; channelEmoji?: string; conversationId?: string; conversationName?: string }) => {
+    onSelectTileType("call", {
+      roomId: metadata.roomId,
+      roomLabel: metadata.roomLabel,
+      channelId: metadata.channelId,
+      channelName: metadata.channelName,
+      channelEmoji: metadata.channelEmoji,
+      conversationId: metadata.conversationId,
+      conversationName: metadata.conversationName,
+    });
+    setShowCallModal(false);
+    setIsOpen(false);
+  };
+
   const handleSelectType = (type: string) => {
     if (type === "dm") {
       setShowDMModal(true);
@@ -84,7 +84,7 @@ export function TileMenu({ gridId, onSelectTileType }: TileMenuProps) {
       setShowCallModal(true);
       setIsOpen(false);
     } else {
-      onSelectTileType(type);
+      onSelectTileType(type, type === "room" ? { roomLabel: "The Room" } : undefined);
       setIsOpen(false);
     }
   };

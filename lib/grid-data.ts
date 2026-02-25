@@ -151,7 +151,7 @@ export async function getGridData(
           const roomId = t.channelId ?? t.conversationId ?? (gridRow as { id: string }).id;
           const roomLabel =
             t.callRoomLabel ??
-            (t.channelId ? `${channelEmoji || "📢"} #${channelName}` : t.conversationId ? `Call with ${conversationName}` : t.type === "loop_room" ? (t.callRoomLabel ?? "Loop room") : "Grid call");
+            (t.channelId ? `${channelEmoji || "📢"} #${channelName}` : t.conversationId ? `Call with ${conversationName}` : (t.type === "loop_room" || t.type === "room") ? (t.callRoomLabel ?? (t.type === "room" ? "The Room" : "Loop room")) : "Grid call");
           return {
             id: t.id,
             type: t.type,

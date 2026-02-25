@@ -4,7 +4,8 @@
 const STORAGE_KEY = "klyr-encryption-key";
 
 /**
- * Generate a new encryption key and store it in localStorage
+ * Generate a new encryption key and store it in localStorage.
+ * Also saves to user profile for cross-device sync.
  */
 export async function generateEncryptionKey(): Promise<string> {
   const key = await window.crypto.subtle.generateKey(
@@ -19,7 +20,38 @@ export async function generateEncryptionKey(): Promise<string> {
   const exported = await window.crypto.subtle.exportKey("jwk", key);
   const keyString = JSON.stringify(exported);
   localStorage.setItem(STORAGE_KEY, keyString);
+  try {
+    await fetch("/api/users/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ encryptionKey: keyString }),
+    });
+  } catch {
+    // ignore - key is in localStorage, sync will retry later
+  }
   return keyString;
+}
+
+/**
+ * Fetch encryption key from user profile and store in localStorage.
+ * Call when app loads on a new device so messages can be decrypted.
+ */
+export async function syncEncryptionKeyFromProfile(): Promise<boolean> {
+  if (localStorage.getItem(STORAGE_KEY)) return false;
+  try {
+    const res = await fetch("/api/users/me", { credentials: "include" });
+    if (!res.ok) return false;
+    const user = await res.json();
+    const key = user?.encryptionKey;
+    if (typeof key === "string" && key.trim()) {
+      localStorage.setItem(STORAGE_KEY, key);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
 }
 
 /**

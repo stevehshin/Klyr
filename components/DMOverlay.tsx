@@ -6,6 +6,7 @@ import {
   decryptMessage,
   getEncryptionKey,
   generateEncryptionKey,
+  syncEncryptionKeyFromProfile,
 } from "@/lib/crypto";
 import { ConversationSelector, Conversation } from "./ConversationSelector";
 import { NewConversationModal } from "./NewConversationModal";
@@ -54,12 +55,12 @@ export function DMOverlay({ tileId, onClose }: DMOverlayProps) {
     }
   }, [conversations, tileId]);
 
-  // Check for encryption key and generate if needed
+  // Check for encryption key (sync from profile on new devices)
   useEffect(() => {
     const checkKey = async () => {
+      await syncEncryptionKeyFromProfile();
       let key = getEncryptionKey();
       if (!key) {
-        // Generate new key
         key = await generateEncryptionKey();
         setShowKeyWarning(true);
       }

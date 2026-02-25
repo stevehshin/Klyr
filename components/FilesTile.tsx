@@ -106,6 +106,7 @@ export function FilesTile({ gridId, onClose }: FilesTileProps) {
       formData.set("file", file);
       const res = await fetch("/api/grid/files/upload", {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
       const text = await res.text();
@@ -128,7 +129,7 @@ export function FilesTile({ gridId, onClose }: FilesTileProps) {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this file?")) return;
     try {
-      const res = await fetch(`/api/grid/files/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/grid/files/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete");
       if (previewFile?.id === id) setPreviewFile(null);
       await fetchFiles();

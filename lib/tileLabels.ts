@@ -14,6 +14,7 @@ export function getTileLabel(type: string, fallback?: string): string {
     call: "Call",
     summary: "Summary",
     loop_room: "Loop Room",
+    room: "The Room",
   };
   return labels[type] ?? fallback ?? type;
 }
