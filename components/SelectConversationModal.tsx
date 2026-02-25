@@ -24,7 +24,7 @@ export function SelectConversationModal({ onClose, onSelect }: SelectConversatio
     if (type !== "direct") return;
     let cancelled = false;
     setUsersLoading(true);
-    fetch("/api/users")
+    fetch("/api/users", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : { users: [] }))
       .then((data) => {
         if (!cancelled) setUsers(data.users || []);

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { neon } from "@neondatabase/serverless";
 
-// GET - Fetch all channel groups and ungrouped channels for a user
+export const maxDuration = 15;
+
+// GET - Fetch all channel groups and ungrouped channels for a user (Neon HTTP for Vercel reliability)
 export async function GET(request: NextRequest) {
   try {
     const session = await getSessionFromRequest(request);
@@ -10,32 +12,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const groups = await prisma.channelGroup.findMany({
-      where: { ownerId: session.userId },
-      include: {
-        channels: {
-          include: {
-            _count: { select: { members: true, messages: true } },
-          },
-        },
-      },
-      orderBy: { order: "asc" },
-    });
-
-    const ungroupedChannels = await prisma.channel.findMany({
-      where: {
-        OR: [
-          { ownerId: session.userId },
-          { members: { some: { userId: session.userId } } },
-        ],
-        channelGroupId: null,
-      },
-      include: {
-        _count: { select: { members: true, messages: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
+    const sql = neon(process.env.DATABASE_URL!);
+    const groupRows = await sql`
+      SELECT id, name, "order", "ownerId"
+      FROM "ChannelGroup"
+      WHERE "ownerId" = ${session.userId}
+      ORDER BY "order" ASC
+    `;
+    const groups = await Promise.all(
+      (groupRows as { id: string; name: string; order: number }[]).map(async (g) => {
+        const channels = await sql`
+          SELECT id, name, emoji, "isPrivate"
+          FROM "Channel"
+          WHERE "channelGroupId" = ${g.id}
+          ORDER BY "createdAt" ASC
+        `;
+        return {
+          ...g,
+          channels: (channels as { id: string; name: string; emoji: string; isPrivate: boolean }[]).map((c) => ({
+            id: c.id,
+            name: c.name,
+            emoji: c.emoji ?? "📢",
+            isPrivate: c.isPrivate ?? false,
+          })),
+        };
+      })
+    );
+    const ungroupedRows = await sql`
+      SELECT id, name, emoji, "isPrivate"
+      FROM "Channel"
+      WHERE "channelGroupId" IS NULL
+        AND ("ownerId" = ${session.userId}
+             OR EXISTS (SELECT 1 FROM "ChannelMember" m WHERE m."channelId" = "Channel".id AND m."userId" = ${session.userId}))
+      ORDER BY "createdAt" DESC
+    `;
+    const ungroupedChannels = (ungroupedRows as { id: string; name: string; emoji: string; isPrivate: boolean }[]).map((c) => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji ?? "📢",
+      isPrivate: c.isPrivate ?? false,
+    }));
     return NextResponse.json({ groups, ungroupedChannels });
   } catch (error) {
     console.error("Failed to fetch channel groups:", error);
@@ -64,20 +80,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const maxOrder = await prisma.channelGroup.findFirst({
-      where: { ownerId: session.userId },
-      orderBy: { order: "desc" },
-      select: { order: true },
-    });
-
-    const group = await prisma.channelGroup.create({
-      data: {
-        name: name.trim(),
-        order: (maxOrder?.order ?? -1) + 1,
-        ownerId: session.userId,
-      },
-    });
-
+    const sql = neon(process.env.DATABASE_URL!);
+    const [maxRow] = await sql`
+      SELECT "order" FROM "ChannelGroup"
+      WHERE "ownerId" = ${session.userId}
+      ORDER BY "order" DESC
+      LIMIT 1
+    `;
+    const nextOrder = (maxRow as { order?: number } | undefined)?.order ?? -1;
+    const [groupRow] = await sql`
+      INSERT INTO "ChannelGroup" (id, name, "order", "ownerId")
+      VALUES (gen_random_uuid()::text, ${name.trim()}, ${nextOrder + 1}, ${session.userId})
+      RETURNING id, name, "order", "ownerId"
+    `;
+    const group = groupRow as { id: string; name: string; order: number; ownerId: string };
     return NextResponse.json({ group });
   } catch (error) {
     console.error("Failed to create channel group:", error);

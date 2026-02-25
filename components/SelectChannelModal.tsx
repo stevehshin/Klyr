@@ -22,7 +22,7 @@ export function SelectChannelModal({ onClose, onSelect }: SelectChannelModalProp
   useEffect(() => {
     const fetchChannels = async () => {
       try {
-        const response = await fetch("/api/channels");
+        const response = await fetch("/api/channels", { credentials: "include" });
         if (response.ok) {
           const data = await response.json();
           setChannels(data.channels);

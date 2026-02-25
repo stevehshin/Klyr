@@ -25,7 +25,7 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
   useEffect(() => {
     let cancelled = false;
     setUsersLoading(true);
-    fetch("/api/users")
+    fetch("/api/users", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : { users: [] }))
       .then((data) => {
         if (!cancelled) setUsers(data.users || []);
@@ -70,6 +70,7 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
       const response = await fetch("/api/grid/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ gridId, email: emailToUse, permission }),
       });
 

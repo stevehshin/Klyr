@@ -158,7 +158,7 @@ export function GridWorkspace({
 
   const refreshDMs = async () => {
     try {
-      const res = await fetch("/api/tiles/dms");
+      const res = await fetch("/api/tiles/dms", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setDmTiles(data.dms ?? []);
@@ -175,8 +175,8 @@ export function GridWorkspace({
   const refreshChannels = async () => {
     try {
       const [channelsRes, groupsRes] = await Promise.all([
-        fetch("/api/channels"),
-        fetch("/api/channel-groups"),
+        fetch("/api/channels", { credentials: "include" }),
+        fetch("/api/channel-groups", { credentials: "include" }),
       ]);
       if (channelsRes.ok) {
         const data = await channelsRes.json();

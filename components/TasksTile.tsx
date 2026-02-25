@@ -905,7 +905,7 @@ function NewTaskModal({
 
   useEffect(() => {
     if (showUserPicker && users.length === 0) {
-      fetch("/api/users")
+      fetch("/api/users", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => setUsers(d.users ?? []));
     }
@@ -1182,7 +1182,7 @@ function TaskDetailDrawer({
 
   useEffect(() => {
     if (showUserPicker && users.length === 0) {
-      fetch("/api/users")
+      fetch("/api/users", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => setUsers(d.users ?? []));
     }
