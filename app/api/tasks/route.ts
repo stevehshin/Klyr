@@ -3,6 +3,11 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { neon } from "@neondatabase/serverless";
 import { canViewGridNeon, canEditGridNeon } from "@/lib/neonDb";
 
+/** Allow both view and edit users to add tasks (collaborative task board). */
+async function canAddTaskNeon(userId: string, gridId: string): Promise<boolean> {
+  return canViewGridNeon(userId, gridId);
+}
+
 export const maxDuration = 15;
 
 // GET /api/tasks?gridId=xxx&status=...&assigneeUserId=...&projectId=...&visibility=...
@@ -75,7 +80,7 @@ export async function POST(request: NextRequest) {
     const { gridId, projectId, title, description, status, priority, dueAt, assigneeUserId, visibility, calendarEventId } = body;
     if (!gridId || !title || typeof title !== "string" || !title.trim())
       return NextResponse.json({ error: "gridId and title are required" }, { status: 400 });
-    if (!(await canEditGridNeon(session.userId, gridId)))
+    if (!(await canAddTaskNeon(session.userId, gridId)))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const vis = visibility === "PRIVATE" ? "PRIVATE" : "SHARED";

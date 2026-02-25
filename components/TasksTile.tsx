@@ -227,6 +227,8 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
     return () => { cancelled = true; };
   }, [fetchProjects, fetchTasks]);
 
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const createTask = async (payload: {
     title: string;
     description?: string;
@@ -239,6 +241,7 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
     calendarEventId?: string | null;
   }) => {
     setCreating(true);
+    setCreateError(null);
     try {
       const res = await fetch("/api/tasks", {
         method: "POST",
@@ -256,9 +259,13 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
         setQuickAddTitle("");
         return data.task;
       }
-      console.error("Create task failed:", data.error || res.status);
+      const msg = data.error || (res.status === 403 ? "You don't have permission to add tasks" : res.status === 401 ? "Please log in again" : "Failed to create task");
+      setCreateError(msg);
+      console.error("Create task failed:", msg);
       return null;
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create task";
+      setCreateError(msg);
       console.error("Create task error:", e);
       return null;
     } finally {
@@ -400,6 +407,12 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        {createError && (
+          <div className="mx-2 mt-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm flex items-center justify-between">
+            <span>{createError}</span>
+            <button type="button" onClick={() => setCreateError(null)} className="text-red-500 hover:text-red-700" aria-label="Dismiss">×</button>
+          </div>
+        )}
         {viewMode === "LIST" && (
           <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
             <input
