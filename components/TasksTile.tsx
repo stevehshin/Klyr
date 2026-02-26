@@ -259,7 +259,7 @@ export function TasksTile({ tileId, gridId, userId, userEmail, gridMembers, onCl
         setQuickAddTitle("");
         return data.task;
       }
-      const msg = data.error || (res.status === 403 ? "You don't have permission to add tasks" : res.status === 401 ? "Please log in again" : "Failed to create task");
+      const msg = data.details || data.error || (res.status === 403 ? "You don't have permission to add tasks" : res.status === 401 ? "Please log in again" : "Failed to create task");
       setCreateError(msg);
       console.error("Create task failed:", msg);
       return null;

@@ -92,12 +92,22 @@ export async function POST(request: NextRequest) {
     const projId = projectId || null;
     const calEvId = calendarEventId || null;
 
-    const sql = neon(process.env.DATABASE_URL!);
-    const [taskRow] = await sql`
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      console.error("DATABASE_URL not set");
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+    }
+    const sql = neon(dbUrl);
+    const rows = await sql`
       INSERT INTO "Task" (id, "gridId", "projectId", title, description, status, priority, "dueAt", "assigneeUserId", "createdByUserId", visibility, "calendarEventId")
       VALUES (gen_random_uuid()::text, ${gridId}, ${projId}, ${title.trim()}, ${desc}, ${st}, ${pri}, ${due?.toISOString() ?? null}, ${assignee}, ${session.userId}, ${vis}, ${calEvId})
       RETURNING id, "gridId", "projectId", title, description, status, priority, "dueAt", "assigneeUserId", "createdByUserId", visibility, "calendarEventId", "createdAt", "updatedAt"
     `;
+    const taskRow = Array.isArray(rows) ? rows[0] : (rows as { rows?: unknown[] })?.rows?.[0];
+    if (!taskRow) {
+      console.error("Task INSERT returned no rows");
+      return NextResponse.json({ error: "Failed to create task (no rows returned)" }, { status: 500 });
+    }
 
     const t = taskRow as Record<string, unknown>;
     const assigneeId = t.assigneeUserId as string | null;
@@ -116,7 +126,11 @@ export async function POST(request: NextRequest) {
     };
     return NextResponse.json({ task });
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Failed to create task:", error);
-    return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create task", details: errMsg },
+      { status: 500 }
+    );
   }
 }
