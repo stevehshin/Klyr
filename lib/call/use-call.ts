@@ -12,6 +12,7 @@ import {
   getVideoTrack,
   muteTrack,
   unmuteTrack,
+  getNewVideoTrack,
 } from "./media-stream";
 import {
   type CallStateData,
@@ -227,14 +228,42 @@ export function useCall({ roomId, onStateChange, onToast }: UseCallOptions) {
     toast(next ? "Muted" : "Unmuted");
   }, [data.local.audioMuted, data.local.stream, updateState, toast]);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async () => {
     const next = !data.local.videoMuted;
-    const track = data.local.stream ? getVideoTrack(data.local.stream) : null;
-    if (track) next ? muteTrack(track) : unmuteTrack(track);
-    signalingRef.current?.send({ type: "mute", video: next });
-    updateState((d) => ({ ...d, local: { ...d.local, videoMuted: next } }));
-    toast(next ? "Camera off" : "Camera on");
-  }, [data.local.videoMuted, data.local.stream, updateState, toast]);
+    const stream = localStreamRef.current;
+
+    if (next) {
+      // Turning camera OFF: mute existing track and notify
+      const track = stream ? getVideoTrack(stream) : null;
+      if (track) muteTrack(track);
+      signalingRef.current?.send({ type: "mute", video: true });
+      updateState((d) => ({ ...d, local: { ...d.local, videoMuted: true } }));
+      toast("Camera off");
+      return;
+    }
+
+    // Turning camera ON: get a new video track (re-enabling often fails with enabled=true)
+    try {
+      const newTrack = await getNewVideoTrack();
+      if (!stream) {
+        newTrack.stop();
+        toast("No active call stream");
+        return;
+      }
+      const oldVideo = getVideoTrack(stream);
+      if (oldVideo) {
+        stream.removeTrack(oldVideo);
+        oldVideo.stop();
+      }
+      stream.addTrack(newTrack);
+      peerManagerRef.current?.replaceVideoTrackForAllPeers(newTrack);
+      signalingRef.current?.send({ type: "mute", video: false });
+      updateState((d) => ({ ...d, local: { ...d.local, videoMuted: false } }));
+      toast("Camera on");
+    } catch (err) {
+      toast("Could not turn camera on");
+    }
+  }, [data.local.videoMuted, updateState, toast]);
 
   const stopScreenShare = useCallback(() => {
     stopStream(screenStreamRef.current);

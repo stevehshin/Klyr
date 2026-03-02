@@ -6,9 +6,24 @@ export type PeerConnectionEvents = {
   onConnectionStateChange: (peerId: string, state: RTCPeerConnectionState) => void;
 };
 
+/** Merge a new track into an existing stream or create a new stream; return the stream. */
+function mergeTrackIntoStream(peerId: string, track: MediaStreamTrack, existingStreams: Map<string, MediaStream>, isScreenShare: boolean): MediaStream {
+  const key = `${peerId}-${isScreenShare ? "screen" : "av"}`;
+  let stream = existingStreams.get(key);
+  if (!stream) {
+    stream = new MediaStream();
+    existingStreams.set(key, stream);
+  }
+  if (!stream.getTracks().includes(track)) {
+    stream.addTrack(track);
+  }
+  return stream;
+}
+
 export class PeerManager {
   private peers = new Map<string, RTCPeerConnection>();
   private events: PeerConnectionEvents;
+  private remoteStreams = new Map<string, MediaStream>();
 
   constructor(events: PeerConnectionEvents) {
     this.events = events;
@@ -17,8 +32,9 @@ export class PeerManager {
   createPeer(peerId: string) {
     const pc = new RTCPeerConnection(RTC_CONFIG);
     pc.ontrack = (e) => {
-      const stream = e.streams[0];
-      if (stream) this.events.onTrack(peerId, stream, false);
+      const track = e.track;
+      const stream = mergeTrackIntoStream(peerId, track, this.remoteStreams, false);
+      this.events.onTrack(peerId, stream, false);
     };
     pc.onicecandidate = (e) => {
       if (e.candidate) this.events.onIceCandidate(peerId, e.candidate);
@@ -87,7 +103,17 @@ export class PeerManager {
     if (videoSender) videoSender.replaceTrack(cameraTrack);
   }
 
+  /** Replace the video track sent to all peers (e.g. when re-enabling camera). */
+  replaceVideoTrackForAllPeers(videoTrack: MediaStreamTrack | null) {
+    for (const [peerId, pc] of this.peers) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) sender.replaceTrack(videoTrack);
+    }
+  }
+
   destroyPeer(peerId: string) {
+    this.remoteStreams.delete(`${peerId}-av`);
+    this.remoteStreams.delete(`${peerId}-screen`);
     const pc = this.peers.get(peerId);
     if (pc) {
       pc.close();
@@ -96,6 +122,7 @@ export class PeerManager {
   }
 
   destroyAll() {
+    this.remoteStreams.clear();
     for (const [, pc] of this.peers) pc.close();
     this.peers.clear();
   }

@@ -14,8 +14,8 @@ function CallPageContent() {
 
   if (!roomId) {
     return (
-      <div className="min-h-screen bg-[var(--call-bg)] flex items-center justify-center text-[var(--call-text)]">
-        <p>Missing room. Please start a call from your grid.</p>
+      <div data-call-overlay className="min-h-screen flex flex-col items-center justify-center text-[var(--call-text)] p-6">
+        <p className="text-[var(--call-muted)]">Missing room. Please start a call from your grid.</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export default function CallPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[var(--call-bg)] flex items-center justify-center text-[var(--call-text)]">
+        <div data-call-overlay className="min-h-screen flex items-center justify-center text-[var(--call-muted)]">
           Loading…
         </div>
       }

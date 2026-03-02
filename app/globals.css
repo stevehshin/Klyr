@@ -398,6 +398,25 @@ html, body {
   animation: flux-shimmer 2s var(--motion-ease) infinite;
 }
 
+/* Tasks tile: card "landing" when dropped into a new column/lane */
+@keyframes task-card-land {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  }
+  60% {
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+}
+.task-card-land {
+  animation: task-card-land 0.4s ease-out;
+}
+
 /* Dock — floating glass pill; theme tokens from themes.css */
 .klyr-dock {
   background: var(--k-dock-surface, rgba(255, 255, 255, 0.8));
@@ -416,13 +435,24 @@ html, body {
   }
 }
 
-/* Call overlay — dark theme for video UI */
+/* The Room — video call overlay styling */
 [data-call-overlay] {
-  --call-bg: #0f172a;
-  --call-surface: #1e293b;
-  --call-border: #334155;
-  --call-text: #f8fafc;
+  --call-bg: #0c1222;
+  --call-bg-mid: #131c2e;
+  --call-surface: #1a2332;
+  --call-surface-elevated: #232d40;
+  --call-border: #2d3a52;
+  --call-text: #f1f5f9;
   --call-muted: #94a3b8;
-  --call-accent: #3b82f6;
-  --call-error: #ef4444;
+  --call-accent: #6366f1;
+  --call-accent-hover: #818cf8;
+  --call-error: #f43f5e;
+  --call-success: #22c55e;
+  --call-radius: 1rem;
+  --call-radius-sm: 0.5rem;
+  --call-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  --call-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+[data-call-overlay] {
+  background: linear-gradient(165deg, var(--call-bg) 0%, var(--call-bg-mid) 50%, var(--call-bg) 100%);
 }

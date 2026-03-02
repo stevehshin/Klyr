@@ -36,3 +36,16 @@ export function stopStream(stream: MediaStream | null) {
   if (!stream) return;
   stream.getTracks().forEach((t) => t.stop());
 }
+
+/** Get a new video track (e.g. to re-enable camera after turning it off). */
+export async function getNewVideoTrack(): Promise<MediaStreamTrack> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+  });
+  const track = stream.getVideoTracks()[0];
+  if (!track) throw new Error("No video track");
+  stream.getTracks().forEach((t) => {
+    if (t !== track) t.stop();
+  });
+  return track;
+}

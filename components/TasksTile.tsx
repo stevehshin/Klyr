@@ -613,6 +613,7 @@ function BoardView({
   const [draggingColumn, setDraggingColumn] = useState<string | null>(null);
   const [columnDropIndex, setColumnDropIndex] = useState<number | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [recentlyMovedTaskId, setRecentlyMovedTaskId] = useState<string | null>(null);
 
   const taskStatuses = Array.from(new Set(tasks.map((t) => t.status)));
   const effectiveColumns = Array.from(
@@ -643,8 +644,10 @@ function BoardView({
     const taskId = e.dataTransfer.getData("text/plain");
     if (!taskId) return;
     const newAssignee = assigneeId === "__unassigned__" ? null : assigneeId;
+    setRecentlyMovedTaskId(taskId);
     onDrop(taskId, status, newAssignee);
     setDragging(null);
+    setTimeout(() => setRecentlyMovedTaskId(null), 600);
   };
 
   const getColumnLabel = (s: string) => boardConfig.columnLabels[s] ?? STATUS_LABELS[s] ?? s;
@@ -842,7 +845,9 @@ function BoardView({
                         onDragStart={!showCustomize ? (e) => handleDragStart(e, task.id) : undefined}
                         onDragEnd={handleDragEnd}
                         onClick={() => onTaskClick(task.id)}
-                        className={`mb-2 p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-sm cursor-grab active:cursor-grabbing hover:shadow ${dragging === task.id ? "opacity-50" : ""}`}
+                        className={`mb-2 p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-sm cursor-grab active:cursor-grabbing hover:shadow transition-all duration-200 ease-out ${
+                          dragging === task.id ? "opacity-50 scale-95" : ""
+                        } ${recentlyMovedTaskId === task.id ? "task-card-land" : ""}`}
                       >
                         <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.title}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">

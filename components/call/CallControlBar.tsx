@@ -45,18 +45,18 @@ export function CallControlBar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const btnClass = "p-3 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--call-accent)]";
+  const btnClass = "p-3 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[var(--call-accent)] focus:ring-offset-2 focus:ring-offset-[var(--call-bg)]";
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-full bg-[var(--call-surface)]/90 border border-[var(--call-border)] shadow-lg"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2.5 rounded-[var(--call-radius)] bg-[var(--call-surface)]/95 border border-[var(--call-border)] shadow-[var(--call-shadow)] backdrop-blur-sm"
       role="toolbar"
       aria-label="Call controls"
     >
       <button
         type="button"
         onClick={onToggleMute}
-        className={`${btnClass} ${muted ? "bg-[var(--call-error)] text-white" : "bg-[var(--call-surface)] text-[var(--call-text)]"}`}
+        className={`${btnClass} ${muted ? "bg-[var(--call-error)] text-white" : "bg-[var(--call-surface-elevated)] text-[var(--call-text)] hover:bg-[var(--call-border)]"}`}
         aria-pressed={muted}
         aria-label={muted ? "Unmute (M)" : "Mute (M)"}
       >
@@ -67,7 +67,7 @@ export function CallControlBar({
       <button
         type="button"
         onClick={onToggleVideo}
-        className={`${btnClass} ${videoOff ? "bg-[var(--call-error)] text-white" : "bg-[var(--call-surface)] text-[var(--call-text)]"}`}
+        className={`${btnClass} ${videoOff ? "bg-[var(--call-error)] text-white" : "bg-[var(--call-surface-elevated)] text-[var(--call-text)] hover:bg-[var(--call-border)]"}`}
         aria-pressed={videoOff}
         aria-label={videoOff ? "Camera on (V)" : "Camera off (V)"}
       >
@@ -78,7 +78,7 @@ export function CallControlBar({
       <button
         type="button"
         onClick={onToggleScreenShare}
-        className={`${btnClass} ${screenSharing ? "bg-[var(--call-accent)] text-white" : "bg-[var(--call-surface)] text-[var(--call-text)]"}`}
+        className={`${btnClass} ${screenSharing ? "bg-[var(--call-accent)] text-white" : "bg-[var(--call-surface-elevated)] text-[var(--call-text)] hover:bg-[var(--call-border)]"}`}
         aria-pressed={screenSharing}
         aria-label={screenSharing ? "Stop share (S)" : "Share screen (S)"}
       >
@@ -86,7 +86,7 @@ export function CallControlBar({
           <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z" />
         </svg>
       </button>
-      <div className="w-px h-6 bg-[var(--call-border)]" />
+      <div className="w-px h-7 bg-[var(--call-border)]" />
       <button
         type="button"
         onClick={onLeave}

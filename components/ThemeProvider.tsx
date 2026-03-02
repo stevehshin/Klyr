@@ -2,8 +2,14 @@
 
 import { useEffect } from "react";
 import { AestheticThemeProvider } from "@/context/AestheticThemeContext";
+import { syncEncryptionKeyFromProfile } from "@/lib/crypto";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Sync encryption key from profile so messages sent from another device can be decrypted
+    syncEncryptionKeyFromProfile();
+  }, []);
+
   useEffect(() => {
     // Load custom theme from localStorage on mount (existing behavior)
     const savedTheme = localStorage.getItem("klyr-theme");

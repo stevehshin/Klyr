@@ -8,12 +8,13 @@ type UserOption = { id: string; email: string; displayName?: string | null; avat
 export interface ShareGridModalProps {
   gridId: string;
   gridName: string;
+  currentUserId?: string;
   onClose: () => void;
 }
 
-export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProps) {
+export function ShareGridModal({ gridId, gridName, currentUserId, onClose }: ShareGridModalProps) {
   const [email, setEmail] = useState("");
-  const [permission, setPermission] = useState<"view" | "edit">("view");
+  const [permission, setPermission] = useState<"view" | "edit" | "admin">("edit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -21,6 +22,32 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
   const [usersLoading, setUsersLoading] = useState(true);
   const [userSearch, setUserSearch] = useState("");
   const [showEmailFallback, setShowEmailFallback] = useState(false);
+  const [members, setMembers] = useState<{ id: string; email: string; displayName: string; role: string }[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [canManage, setCanManage] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMembersLoading(true);
+    fetch(`/api/grid/${gridId}/members`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { members: [] }))
+      .then((data) => {
+        if (!cancelled) setMembers(data.members || []);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMembersLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [gridId, success]);
+
+  useEffect(() => {
+    if (!currentUserId || !members.length) return;
+    const me = members.find((m) => m.id === currentUserId);
+    setCanManage(me?.role === "owner" || me?.role === "admin");
+  }, [gridId, currentUserId, members]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +153,84 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
             </div>
           )}
 
+          {/* People with access */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              People with access
+            </label>
+            {membersLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+            ) : (
+              <ul className="rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 max-h-44 overflow-y-auto">
+                {members.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{m.displayName || m.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {m.role === "owner" ? (
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Owner</span>
+                      ) : canManage ? (
+                        <>
+                          <select
+                            value={m.role}
+                            onChange={async (e) => {
+                              const newRole = e.target.value as "view" | "edit" | "admin";
+                              try {
+                                const res = await fetch(`/api/grid/${gridId}/members`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  credentials: "include",
+                                  body: JSON.stringify({ userId: m.id, permission: newRole }),
+                                });
+                                if (res.ok) setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, role: newRole } : x)));
+                                else setError((await res.json()).error || "Failed to update");
+                              } catch {
+                                setError("Failed to update role");
+                              }
+                            }}
+                            className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          >
+                            <option value="view">View</option>
+                            <option value="edit">Edit</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`Remove ${m.displayName || m.email} from this grid?`)) return;
+                              try {
+                                const res = await fetch(`/api/grid/${gridId}/members`, {
+                                  method: "DELETE",
+                                  headers: { "Content-Type": "application/json" },
+                                  credentials: "include",
+                                  body: JSON.stringify({ userId: m.id }),
+                                });
+                                if (res.ok) {
+                                  setMembers((prev) => prev.filter((x) => x.id !== m.id));
+                                  setSuccess("Member removed");
+                                  setTimeout(() => setSuccess(""), 2000);
+                                } else setError((await res.json()).error || "Failed to remove");
+                              } catch {
+                                setError("Failed to remove");
+                              }
+                            }}
+                            className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{m.role}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Choose a Klyr user
@@ -203,7 +308,7 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
                   name="permission"
                   value="view"
                   checked={permission === "view"}
-                  onChange={(e) => setPermission(e.target.value as "view" | "edit")}
+                  onChange={(e) => setPermission(e.target.value as "view" | "edit" | "admin")}
                   className="w-4 h-4 text-primary-600"
                 />
                 <div className="flex-1">
@@ -218,12 +323,27 @@ export function ShareGridModal({ gridId, gridName, onClose }: ShareGridModalProp
                   name="permission"
                   value="edit"
                   checked={permission === "edit"}
-                  onChange={(e) => setPermission(e.target.value as "view" | "edit")}
+                  onChange={(e) => setPermission(e.target.value as "view" | "edit" | "admin")}
                   className="w-4 h-4 text-primary-600"
                 />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">Can Edit</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Can add, edit, and delete tiles</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900">
+                <input
+                  type="radio"
+                  name="permission"
+                  value="admin"
+                  checked={permission === "admin"}
+                  onChange={(e) => setPermission(e.target.value as "view" | "edit" | "admin")}
+                  className="w-4 h-4 text-primary-600"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Admin</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Can edit tiles and manage members (assign admin, remove)</p>
                 </div>
               </label>
             </div>

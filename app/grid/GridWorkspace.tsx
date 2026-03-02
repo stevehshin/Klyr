@@ -602,6 +602,7 @@ export function GridWorkspace({
         <ShareGridModal
           gridId={shareModalGridId}
           gridName={grids.find((g) => g.id === shareModalGridId)?.name || "Grid"}
+          currentUserId={userId}
           onClose={() => setShareModalGridId(null)}
         />
       )}

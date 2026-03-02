@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { canEditGrid } from "@/lib/gridAuth";
+import { neon } from "@neondatabase/serverless";
+import { canEditGridNeon, getTileGridIdNeon } from "@/lib/neonDb";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,21 +20,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    for (const tile of tiles as { id: string }[]) {
-      const t = await prisma.tile.findUnique({ where: { id: tile.id }, select: { gridId: true } });
-      if (!t || !(await canEditGrid(session.userId, t.gridId))) {
+    const sql = neon(process.env.DATABASE_URL!);
+
+    for (const tile of tiles as { id: string; x: number; y: number; w: number; h: number }[]) {
+      const gridId = await getTileGridIdNeon(tile.id);
+      if (!gridId || !(await canEditGridNeon(session.userId, gridId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      await sql`
+        UPDATE "Tile"
+        SET x = ${tile.x}, y = ${tile.y}, w = ${tile.w}, h = ${tile.h}
+        WHERE id = ${tile.id}
+      `;
     }
-
-    await Promise.all(
-      (tiles as { id: string; x: number; y: number; w: number; h: number }[]).map((tile) =>
-        prisma.tile.update({
-          where: { id: tile.id },
-          data: { x: tile.x, y: tile.y, w: tile.w, h: tile.h },
-        })
-      )
-    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

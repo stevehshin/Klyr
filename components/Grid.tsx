@@ -283,13 +283,12 @@ export function Grid({
 
     setTiles(updatedTiles);
 
-    // Persist to database
+    // Persist to database (Neon)
     try {
       await fetch("/api/tiles/update-layout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           tiles: updatedTiles.map((t) => ({
             id: t.id,

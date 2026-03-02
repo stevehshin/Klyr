@@ -82,7 +82,7 @@ export function TheRoomTile({ tileId, roomLabel, userEmail, onClose }: TheRoomTi
   }, [tileId, handleLeave]);
 
   const handleJoin = () => {
-    openCallInNewWindow(tileId, roomLabel, userEmail, { audioOnly: true, loopRoom: true });
+    openCallInNewWindow(tileId, roomLabel, userEmail, { audioOnly: false, loopRoom: true });
     setJoined(true);
     try {
       const raw = localStorage.getItem(ROOM_JOINED_KEY);

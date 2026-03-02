@@ -26,7 +26,7 @@ export function CallParticipantGrid({
   };
 
   return (
-    <div className={`grid gap-4 p-4 ${gridClass} place-items-center`} role="list" aria-label="Participants">
+    <div className={`grid gap-5 p-5 sm:p-6 ${gridClass} place-items-center max-w-6xl mx-auto`} role="list" aria-label="Participants">
       <div role="listitem">
         <CallParticipantTile participant={localParticipant} isLocal />
       </div>

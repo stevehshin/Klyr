@@ -18,6 +18,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (!["view", "edit", "admin"].includes(permission)) {
+      return NextResponse.json(
+        { error: "Permission must be view, edit, or admin" },
+        { status: 400 }
+      );
+    }
 
     // Verify the user owns this grid
     const grid = await prisma.grid.findFirst({

@@ -64,7 +64,7 @@ export function CallOverlay({
   return (
     <div
       data-call-overlay
-      className="fixed inset-0 z-[100] bg-[var(--call-bg)] flex flex-col"
+      className="fixed inset-0 z-[100] flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label="Video call"
@@ -73,7 +73,7 @@ export function CallOverlay({
       {(data.state === "lobby" || data.state === "joining" || data.state === "ended") && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg bg-[var(--call-surface)] text-[var(--call-text)] hover:bg-[var(--call-border)] z-10"
+          className="absolute top-5 right-5 p-2.5 rounded-[var(--call-radius-sm)] bg-[var(--call-surface)]/90 text-[var(--call-text)] hover:bg-[var(--call-surface-elevated)] border border-[var(--call-border)]/50 shadow-[var(--call-shadow-sm)] transition-colors z-10"
           aria-label="Close"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,11 +91,17 @@ export function CallOverlay({
         />
       ) : data.state === "joining" ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-[var(--call-muted)]">Joining…</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-[var(--call-accent)] border-t-transparent animate-spin" />
+            <p className="text-[var(--call-muted)] text-sm">Joining…</p>
+          </div>
         </div>
       ) : data.state === "reconnecting" ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-[var(--call-muted)]">Reconnecting…</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-[var(--call-muted)] border-t-transparent animate-spin" />
+            <p className="text-[var(--call-muted)] text-sm">Reconnecting…</p>
+          </div>
         </div>
       ) : (
         <>
@@ -115,7 +121,7 @@ export function CallOverlay({
             onToggleScreenShare={toggleScreenShare}
             onLeave={handleLeave}
           />
-          <p className="fixed bottom-20 left-1/2 -translate-x-1/2 text-xs text-[var(--call-muted)] hidden sm:block">
+          <p className="fixed bottom-20 left-1/2 -translate-x-1/2 text-xs text-[var(--call-muted)]/80 hidden sm:block">
             M mute · V video · S screen · L leave
           </p>
         </>
@@ -123,7 +129,7 @@ export function CallOverlay({
 
       {toast && (
         <div
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-[var(--call-surface)] border border-[var(--call-border)] text-sm text-[var(--call-text)] shadow-lg z-50"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-[var(--call-radius-sm)] bg-[var(--call-surface-elevated)] border border-[var(--call-border)] text-sm text-[var(--call-text)] shadow-[var(--call-shadow)] z-50"
           role="status"
         >
           {toast}
