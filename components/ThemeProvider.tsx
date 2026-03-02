@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { AestheticThemeProvider } from "@/context/AestheticThemeContext";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Load theme from localStorage on mount
+    // Load custom theme from localStorage on mount (existing behavior)
     const savedTheme = localStorage.getItem("klyr-theme");
     if (savedTheme) {
       try {
@@ -22,5 +23,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  return <>{children}</>;
+  return <AestheticThemeProvider>{children}</AestheticThemeProvider>;
 }

@@ -10,7 +10,12 @@ import * as http from "http";
 import { WebSocketServer } from "ws";
 import type { SignalingEvent, ServerEvent, ParticipantInfo } from "../lib/call/signaling-types";
 
-const PORT = parseInt(process.env.SIGNALING_PORT || "3001", 10);
+// Port is read at startup; Render sets PORT (e.g. 10000). Local dev: SIGNALING_PORT or 3001.
+function getPort(): number {
+  const raw = process.env.PORT || process.env.SIGNALING_PORT || "3001";
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? 3001 : n;
+}
 
 interface ClientConnection {
   ws: import("ws").WebSocket;
@@ -61,8 +66,15 @@ function sendTo(conn: ClientConnection, event: ServerEvent) {
 }
 
 const server = http.createServer((req, res) => {
+  // Health check for Render and other hosts (GET / or GET /health)
+  if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, service: "signaling" }));
+    return;
+  }
   if (req.method === "GET" && req.url?.startsWith("/presence")) {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
+    const port = getPort();
+    const u = new URL(req.url, `http://0.0.0.0:${port}`);
     const roomId = u.searchParams.get("roomId");
     if (!roomId) {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -190,7 +202,11 @@ wss.on("connection", (ws) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Signaling server listening on ws://localhost:${PORT}`);
-  console.log(`Presence API: http://localhost:${PORT}/presence?roomId=...`);
+// Render requires binding to 0.0.0.0 and listening on process.env.PORT (e.g. 10000).
+const HOST = "0.0.0.0";
+const PORT = getPort();
+server.listen(PORT, HOST, () => {
+  console.log(`Signaling server listening on ${HOST}:${PORT} (PORT=${process.env.PORT ?? "not set"})`);
+  console.log(`WebSocket: ws://0.0.0.0:${PORT}`);
+  console.log(`Presence API: http://0.0.0.0:${PORT}/presence?roomId=...`);
 });

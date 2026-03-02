@@ -147,15 +147,20 @@ export function MobileGridStack({
       const res = await fetch("/api/tiles/hide", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ tileId }),
       });
       if (res.ok) {
         setTiles((prev) => prev.filter((t) => t.id !== tileId));
         if (openedTileId === tileId) setOpenedTileId(null);
         toast("Tile hidden");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err?.error || "Failed to hide tile");
       }
     } catch (e) {
       console.error("Failed to hide tile:", e);
+      toast("Failed to hide tile");
     }
   };
 
@@ -173,6 +178,7 @@ export function MobileGridStack({
   ) => {
     try {
       const res = await fetch("/api/tiles/create", {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gridId, type, ...metadata }),
@@ -181,9 +187,13 @@ export function MobileGridStack({
         const data = await res.json();
         setTiles((prev) => [...prev, data.tile]);
         toast(`${type.charAt(0).toUpperCase() + type.slice(1)} tile added`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err?.error || `Failed to add tile (${res.status})`);
       }
     } catch (e) {
       console.error("Failed to add tile:", e);
+      toast("Failed to add tile");
     }
   };
 

@@ -1,9 +1,16 @@
 import type { SignalingEvent, ServerEvent } from "./signaling-types";
 
-const WS_URL =
-  typeof window !== "undefined"
-    ? `ws://${window.location.hostname}:3001`
-    : "ws://localhost:3001";
+/** WebSocket URL for the signaling server. Use NEXT_PUBLIC_SIGNALING_URL in production (e.g. wss://your-signaling.onrender.com). */
+function getSignalingWsUrl(): string {
+  const env = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SIGNALING_URL : "";
+  if (env && typeof env === "string" && env.trim()) {
+    const url = env.trim();
+    return url.startsWith("ws://") || url.startsWith("wss://") ? url : `wss://${url.replace(/^https?:\/\//, "")}`;
+  }
+  const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  return `ws://${host}:3001`;
+}
+const WS_URL = getSignalingWsUrl();
 
 export type SignalingClientEvents = {
   onMessage: (event: ServerEvent) => void;

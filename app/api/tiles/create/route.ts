@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { neon } from "@neondatabase/serverless";
+import { canEditGridNeon } from "@/lib/neonDb";
+
+export const maxDuration = 15;
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,66 +22,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get existing on-grid tiles to find next available position
-    const existingTiles = await prisma.tile.findMany({
-      where: { gridId, hidden: false, onGrid: true },
-      orderBy: { y: "desc" },
-    });
+    if (!(await canEditGridNeon(session.userId, gridId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Calculate position for new tile (below all existing tiles)
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      console.error("DATABASE_URL not set");
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+    }
+    const sql = neon(dbUrl);
+
+    // Get existing on-grid tiles to find next available position
+    const existingRows = await sql`
+      SELECT id, x, y, w, h FROM "Tile"
+      WHERE "gridId" = ${gridId} AND hidden = false AND "onGrid" = true
+      ORDER BY y DESC
+      LIMIT 1
+    `;
+    const bottomTile = Array.isArray(existingRows) ? existingRows[0] : (existingRows as { rows?: unknown[] })?.rows?.[0];
     let newY = 0;
-    if (existingTiles.length > 0) {
-      const bottomTile = existingTiles[0];
-      newY = bottomTile.y + bottomTile.h;
+    if (bottomTile) {
+      const t = bottomTile as { y: number; h: number };
+      newY = t.y + t.h;
     }
 
     // When onGrid is false (e.g. DM in panel first), don't use grid position yet
     const placeOnGrid = onGrid !== false;
-    const tileData: any = {
-      gridId,
-      type,
-      x: 0,
-      y: placeOnGrid ? newY : 0,
-      w: 4,
-      h: 3,
-      hidden: false,
-      onGrid: placeOnGrid,
-    };
 
-    // Add channel ID if it's a channel tile
-    if (type === "channel" && channelId) {
-      tileData.channelId = channelId;
-    }
+    let channelIdVal: string | null = null;
+    let conversationIdVal: string | null = null;
+    let callRoomLabelVal: string | null = null;
 
-    // Add conversation ID if it's a DM tile
-    if (type === "dm" && conversationId) {
-      tileData.conversationId = conversationId;
-    }
-
-    // Call tiles: store callRoomLabel for display; roomId derived from channelId/conversationId/gridId
-    if (type === "call" && roomLabel) {
-      tileData.callRoomLabel = roomLabel;
-    }
-    if (type === "call" && channelId) tileData.channelId = channelId;
-    if (type === "call" && conversationId) tileData.conversationId = conversationId;
-
-    // Loop room tiles: opt-in join room (title in callRoomLabel)
+    if (type === "channel" && channelId) channelIdVal = channelId;
+    if (type === "dm" && conversationId) conversationIdVal = conversationId;
+    if (type === "call" && roomLabel) callRoomLabelVal = roomLabel;
+    if (type === "call" && channelId) channelIdVal = channelId;
+    if (type === "call" && conversationId) conversationIdVal = conversationId;
     if (type === "loop_room") {
-      tileData.callRoomLabel = (body.title || body.roomLabel || "Loop room").toString().trim().slice(0, 120);
+      callRoomLabelVal = (body.title || body.roomLabel || "Loop room").toString().trim().slice(0, 120);
     }
-
-    // The Room tiles: drop-in voice room (same as loop_room)
     if (type === "room") {
-      tileData.callRoomLabel = (body.title || body.roomLabel || "The Room").toString().trim().slice(0, 120);
+      callRoomLabelVal = (body.title || body.roomLabel || "The Room").toString().trim().slice(0, 120);
     }
 
-    const tile = await prisma.tile.create({
-      data: tileData,
-    });
+    const rows = await sql`
+      INSERT INTO "Tile" (id, "gridId", type, x, y, w, h, hidden, "onGrid", "channelId", "conversationId", "callRoomLabel")
+      VALUES (gen_random_uuid()::text, ${gridId}, ${type}, 0, ${placeOnGrid ? newY : 0}, 4, 3, false, ${placeOnGrid}, ${channelIdVal}, ${conversationIdVal}, ${callRoomLabelVal})
+      RETURNING id, "gridId", type, x, y, w, h, hidden, "onGrid", "channelId", "conversationId", "callRoomLabel", "createdAt"
+    `;
+    const tileRow = Array.isArray(rows) ? rows[0] : (rows as { rows?: unknown[] })?.rows?.[0];
+    if (!tileRow) {
+      console.error("Tile INSERT returned no rows");
+      return NextResponse.json({ error: "Failed to create tile" }, { status: 500 });
+    }
 
-    // Return tile with metadata for frontend
+    const tile = tileRow as Record<string, unknown>;
     const effectiveRoomId = (type === "loop_room" || type === "room") ? tile.id : (channelId ?? conversationId ?? gridId);
-    const effectiveRoomLabel = (type === "loop_room" || type === "room") ? (tile.callRoomLabel ?? (type === "room" ? "The Room" : "Loop room")) : (roomLabel ?? tile.callRoomLabel ?? (channelId ? `${channelEmoji || "📢"} #${channelName}` : conversationId ? `Call with ${conversationName}` : "Grid call"));
+    const effectiveRoomLabel =
+      (type === "loop_room" || type === "room")
+        ? ((tile.callRoomLabel as string) ?? (type === "room" ? "The Room" : "Loop room"))
+        : (roomLabel ?? (tile.callRoomLabel as string) ?? (channelId ? `${channelEmoji || "📢"} #${channelName}` : conversationId ? `Call with ${conversationName}` : "Grid call"));
+
     const tileWithMetadata = {
       ...tile,
       channelName,

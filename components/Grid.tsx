@@ -14,6 +14,8 @@ import { CallTile } from "./CallTile";
 import { SummaryTile } from "./SummaryTile";
 import { openCallInNewWindow } from "@/lib/call/open-call-window";
 import { TileMenu } from "./TileMenu";
+import { KlyrSurface } from "./KlyrSurface";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { RestoreHiddenTilesModal } from "./RestoreHiddenTilesModal";
 import { Veil } from "./Veil";
 import { RequestAccessModal } from "./RequestAccessModal";
@@ -109,10 +111,7 @@ function TileContent({
   };
 
   return (
-    <div
-      className="tile-surface h-full flex flex-col overflow-hidden rounded-lg relative"
-      style={{ transition: "box-shadow 200ms ease, border-color 200ms ease" }}
-    >
+    <KlyrSurface className="h-full flex flex-col overflow-hidden rounded-lg relative">
       <button
         type="button"
         onClick={(e) => {
@@ -177,7 +176,7 @@ function TileContent({
       <div className="h-full flex flex-col" data-tile-body onClick={() => onActivate()}>
         {children}
       </div>
-    </div>
+    </KlyrSurface>
   );
 }
 
@@ -314,15 +313,20 @@ export function Grid({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ tileId }),
       });
 
       if (response.ok) {
         setTiles((prev) => prev.filter((t) => t.id !== tileId));
         toast("Tile hidden");
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast(err?.error || "Failed to hide tile");
       }
     } catch (error) {
       console.error("Failed to hide tile:", error);
+      toast("Failed to hide tile");
     }
   };
 
@@ -334,6 +338,7 @@ export function Grid({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           gridId,
           type,
@@ -345,9 +350,13 @@ export function Grid({
         const data = await response.json();
         setTiles((prev) => [...prev, data.tile]);
         toast(`${type.charAt(0).toUpperCase() + type.slice(1)} tile added`);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast(err?.error || `Failed to add tile (${response.status})`);
       }
     } catch (error) {
       console.error("Failed to add tile:", error);
+      toast("Failed to add tile");
     }
   };
 
@@ -532,7 +541,7 @@ export function Grid({
   return (
     <>
       <ActiveTileKeyboard />
-      <div className="h-screen w-full overflow-hidden flex flex-col bg-[var(--background)]">
+      <div className="klyr-app-shell h-screen w-full overflow-hidden flex flex-col">
         {/* OS Control Layer — [Logo] [☰] [Grid ▼] [Share] [Focus] [Add] [⋮] */}
         <header
         className="relative z-30 flex-shrink-0 border-b border-gray-200/60 dark:border-white/5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3"
@@ -625,6 +634,7 @@ export function Grid({
             </button>
           )}
           <TileMenu gridId={gridId} onSelectTileType={handleAddTile} />
+          <ThemeSwitcher placement="top" />
           <div className="relative">
             <button
               onClick={() => setActionsOpen((o) => !o)}
@@ -687,9 +697,9 @@ export function Grid({
         </div>
       </header>
 
-      {/* Grid area — soft background with subtle pattern */}
+      {/* Grid area — soft background with subtle pattern; bottom padding for dock */}
       <div
-        className="flex-1 w-full overflow-auto p-5 min-w-0"
+        className="klyr-grid-content flex-1 w-full overflow-auto p-5 min-w-0"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,0,0,0.06) 1px, transparent 0)`,
           backgroundSize: "24px 24px",
@@ -700,7 +710,7 @@ export function Grid({
           className="w-full min-w-0"
         >
           <div
-            className="relative inline-block rounded-xl bg-white/60 dark:bg-gray-900/40 shadow-sm border border-gray-200/60 dark:border-white/10"
+            className="klyr-grid-inner relative inline-block rounded-xl shadow-sm border"
             style={{
               width: gridWidth,
               ...(showDropGrid ? { minHeight: dropGridHeight } : {}),

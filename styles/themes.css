@@ -1,0 +1,132 @@
+/**
+ * Klyr aesthetic theme tokens. Driven by data-theme on <html>.
+ * Classic = default (current look). Liquid Glass = LIGHT frosted. Midnight = dark glass. Paper = matte.
+ */
+
+/* ——— Classic (default; current look) ——— */
+[data-theme="classic"],
+:root {
+  --k-bg-base: #f8fafc;
+  --k-bg-gradient: none;
+  --k-surface: #ffffff;
+  --k-surface-strong: rgba(248, 250, 252, 0.98);
+  --k-border: rgba(0, 0, 0, 0.06);
+  --k-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --k-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --k-shadow-active: 0 4px 14px rgba(59, 130, 246, 0.12);
+  --k-text: #111827;
+  --k-muted: #6b7280;
+  --k-accent: #2563eb;
+  --k-blur: 0px;
+  --k-radius: 0.5rem;
+  --k-dock-surface: rgba(255, 255, 255, 0.8);
+  --k-dock-border: rgba(0, 0, 0, 0.06);
+  --k-grid-inner-bg: rgba(255, 255, 255, 0.6);
+  --k-grid-inner-border: rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="classic"] {
+    --k-grid-inner-bg: rgb(30 41 59 / 0.4);
+    --k-grid-inner-border: rgba(255, 255, 255, 0.1);
+    --k-bg-base: #0f172a;
+    --k-surface: rgb(30 41 59);
+    --k-surface-strong: rgba(15, 23, 42, 0.98);
+    --k-border: rgba(255, 255, 255, 0.08);
+    --k-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --k-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --k-shadow-active: 0 4px 14px rgba(59, 130, 246, 0.2);
+    --k-text: #f1f5f9;
+    --k-muted: #94a3b8;
+    --k-dock-surface: rgba(15, 23, 42, 0.8);
+    --k-dock-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ——— Liquid Glass (LIGHT, airy, pastel wash, frosted panels) ——— */
+[data-theme="liquidGlass"] {
+  --k-bg-base: #f5f7ff;
+  --k-bg-gradient:
+    radial-gradient(1200px circle at 20% 10%, rgba(140, 160, 255, 0.28), transparent 55%),
+    radial-gradient(900px circle at 80% 20%, rgba(220, 170, 255, 0.22), transparent 60%),
+    radial-gradient(900px circle at 70% 85%, rgba(180, 235, 255, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 247, 255, 0.72));
+  --k-surface: rgba(255, 255, 255, 0.42);
+  --k-surface-strong: rgba(255, 255, 255, 0.55);
+  --k-border: rgba(255, 255, 255, 0.32);
+  --k-shadow: 0 10px 30px rgba(20, 25, 45, 0.10), 0 2px 10px rgba(20, 25, 45, 0.06);
+  --k-shadow-hover: 0 14px 40px rgba(20, 25, 45, 0.12), 0 4px 14px rgba(20, 25, 45, 0.08);
+  --k-shadow-active: 0 14px 44px rgba(59, 130, 246, 0.14), 0 4px 14px rgba(20, 25, 45, 0.08);
+  --k-text: #1e1b4b;
+  --k-muted: #5b5b7a;
+  --k-accent: #6366f1;
+  --k-blur: 14px;
+  --k-radius: 22px;
+  --k-dock-surface: rgba(255, 255, 255, 0.42);
+  --k-dock-border: rgba(255, 255, 255, 0.32);
+  --k-grid-inner-bg: rgba(255, 255, 255, 0.12);
+  --k-grid-inner-border: rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="liquidGlass"] {
+    --k-blur: 4px;
+    --k-surface: rgba(255, 255, 255, 0.88);
+    --k-surface-strong: rgba(255, 255, 255, 0.92);
+    --k-dock-surface: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* ——— Midnight Glass (dark but still glassy, translucent) ——— */
+[data-theme="midnightGlass"] {
+  --k-bg-base: #0c0a14;
+  --k-bg-gradient:
+    radial-gradient(1000px circle at 20% 20%, rgba(88, 80, 160, 0.25), transparent 50%),
+    radial-gradient(800px circle at 80% 80%, rgba(100, 60, 140, 0.2), transparent 55%),
+    linear-gradient(180deg, rgba(20, 18, 35, 0.85), rgba(12, 10, 20, 0.9));
+  --k-surface: rgba(30, 27, 45, 0.55);
+  --k-surface-strong: rgba(40, 36, 60, 0.65);
+  --k-border: rgba(139, 92, 246, 0.22);
+  --k-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(60, 50, 90, 0.15);
+  --k-shadow-hover: 0 14px 40px rgba(139, 92, 246, 0.12), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --k-shadow-active: 0 14px 44px rgba(139, 92, 246, 0.2), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --k-text: #e9e5f0;
+  --k-muted: #9b95a8;
+  --k-accent: #a78bfa;
+  --k-blur: 14px;
+  --k-radius: 22px;
+  --k-dock-surface: rgba(30, 27, 45, 0.6);
+  --k-dock-border: rgba(139, 92, 246, 0.25);
+  --k-grid-inner-bg: rgba(30, 27, 45, 0.35);
+  --k-grid-inner-border: rgba(139, 92, 246, 0.2);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="midnightGlass"] {
+    --k-blur: 4px;
+    --k-surface: rgba(30, 27, 45, 0.92);
+    --k-surface-strong: rgba(40, 36, 60, 0.95);
+    --k-dock-surface: rgba(30, 27, 45, 0.95);
+  }
+}
+
+/* ——— Paper (matte, warm, minimal, no blur) ——— */
+[data-theme="paper"] {
+  --k-bg-base: #faf8f5;
+  --k-bg-gradient: none;
+  --k-surface: #ffffff;
+  --k-surface-strong: #faf8f5;
+  --k-border: rgba(0, 0, 0, 0.08);
+  --k-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --k-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --k-shadow-active: 0 2px 10px rgba(120, 80, 60, 0.08);
+  --k-text: #292524;
+  --k-muted: #78716c;
+  --k-accent: #7c3aed;
+  --k-blur: 0px;
+  --k-radius: 20px;
+  --k-dock-surface: rgba(255, 253, 251, 0.95);
+  --k-dock-border: rgba(0, 0, 0, 0.08);
+  --k-grid-inner-bg: rgba(255, 255, 255, 0.85);
+  --k-grid-inner-border: rgba(0, 0, 0, 0.08);
+}

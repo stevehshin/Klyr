@@ -16,6 +16,7 @@ export function setStoredOpenAIKey(value: string | null): void {
 }
 
 const NOTIFICATIONS_ENABLED_KEY = "klyr_notifications_enabled";
+const NOTIFICATION_PREFS_KEY = "klyr_notification_prefs";
 
 export function getNotificationsEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -25,4 +26,39 @@ export function getNotificationsEnabled(): boolean {
 export function setNotificationsEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, enabled ? "true" : "false");
+}
+
+export interface NotificationPrefs {
+  dm: boolean;
+  mentions: boolean;
+  channelActivity: boolean;
+}
+
+const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  dm: true,
+  mentions: true,
+  channelActivity: false,
+};
+
+export function getNotificationPrefs(): NotificationPrefs {
+  if (typeof window === "undefined") return DEFAULT_NOTIFICATION_PREFS;
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_PREFS_KEY);
+    if (!raw) return DEFAULT_NOTIFICATION_PREFS;
+    const parsed = JSON.parse(raw) as Partial<NotificationPrefs>;
+    return {
+      dm: parsed.dm ?? DEFAULT_NOTIFICATION_PREFS.dm,
+      mentions: parsed.mentions ?? DEFAULT_NOTIFICATION_PREFS.mentions,
+      channelActivity: parsed.channelActivity ?? DEFAULT_NOTIFICATION_PREFS.channelActivity,
+    };
+  } catch {
+    return DEFAULT_NOTIFICATION_PREFS;
+  }
+}
+
+export function setNotificationPrefs(prefs: Partial<NotificationPrefs>): void {
+  if (typeof window === "undefined") return;
+  const current = getNotificationPrefs();
+  const next = { ...current, ...prefs };
+  localStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(next));
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 export interface LoopBarProps {
   tileId: string;
   roomLabel: string;
@@ -37,18 +35,19 @@ export function Dock({
   onFocusActiveTile,
   loopBar,
 }: DockProps) {
-  const [quickJotFocused, setQuickJotFocused] = useState(false);
+  const dockItemClass =
+    "h-11 w-11 flex items-center justify-center flex-shrink-0 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200";
 
   return (
     <div
-      className="klyr-dock fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 px-2 sm:px-3 py-2 rounded-2xl bg-white/80 dark:bg-gray-900/80 border border-gray-200/60 dark:border-white/10 backdrop-blur-xl max-w-[calc(100vw-2rem)] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="klyr-dock fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 px-2 sm:px-3 h-14 max-w-[calc(100vw-2rem)] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       role="toolbar"
       aria-label="Global dock"
     >
       {onOpenNotifications && (
         <button
           onClick={onOpenNotifications}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          className={dockItemClass}
           aria-label="Notifications"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +59,7 @@ export function Dock({
       {onOpenLens && (
         <button
           onClick={onOpenLens}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          className={dockItemClass}
           aria-label="Search (Lens)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,7 +71,7 @@ export function Dock({
       {onOpenFlux && (
         <button
           onClick={onOpenFlux}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/10 transition-colors duration-200 flux-shimmer"
+          className={`${dockItemClass} hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-500/10 flux-shimmer`}
           aria-label="Flux — AI Assistant"
           title="Flux"
         >
@@ -82,8 +81,8 @@ export function Dock({
 
       {onOpenQuickJot && (
         <button
-          onClick={() => setQuickJotFocused(true)}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+          onClick={onOpenQuickJot}
+          className={dockItemClass}
           aria-label="Quick Jot"
           title="Quick note or task"
         >
@@ -95,8 +94,8 @@ export function Dock({
 
       {loopBar && (
         <>
-          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" aria-hidden />
-          <div className="flex items-center gap-1 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 px-2 py-1.5">
+          <div className="w-px h-6 flex-shrink-0 bg-gray-200 dark:bg-gray-700 self-center" aria-hidden />
+          <div className="flex items-center gap-1 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 px-2 py-1.5 h-11 flex-shrink-0">
             <button
               type="button"
               onClick={loopBar.onFocus}
@@ -130,11 +129,11 @@ export function Dock({
       )}
       {activeTileLabel && onFocusActiveTile && (
         <>
-          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" aria-hidden />
+          <div className="w-px h-6 flex-shrink-0 bg-gray-200 dark:bg-gray-700 self-center" aria-hidden />
           <button
             type="button"
             onClick={onFocusActiveTile}
-            className="min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200 flex items-center gap-1.5"
+            className="h-11 px-2.5 flex-shrink-0 flex items-center gap-1.5 rounded-xl text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
             title={`Active: ${activeTileLabel} — click to focus`}
           >
             <span className="opacity-70">Active:</span>
@@ -144,12 +143,12 @@ export function Dock({
       )}
       {minimizedTiles.length > 0 && (
         <>
-          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" aria-hidden />
+          <div className="w-px h-6 flex-shrink-0 bg-gray-200 dark:bg-gray-700 self-center" aria-hidden />
           {minimizedTiles.map((t) => (
             <button
               key={t.id}
               onClick={() => onRestoreTile?.(t.id)}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors duration-200"
+              className={dockItemClass}
               title={t.label}
             >
               <span className="text-sm font-medium w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-700">
@@ -158,27 +157,6 @@ export function Dock({
             </button>
           ))}
         </>
-      )}
-
-      {quickJotFocused && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pb-24 bg-black/20 backdrop-blur-sm" onClick={() => setQuickJotFocused(false)}>
-          <div
-            className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick Jot — coming soon</p>
-            <input
-              type="text"
-              placeholder="Note or task..."
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white placeholder-gray-400"
-              autoFocus
-            />
-            <div className="mt-2 flex justify-end gap-2">
-              <button onClick={() => setQuickJotFocused(false)} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-400">Cancel</button>
-              <button onClick={() => setQuickJotFocused(false)} className="text-sm text-primary-600 dark:text-primary-400 font-medium">Add</button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -1,0 +1,9 @@
+# Render Blueprint: signaling server for "The Room" tile (WebSocket + HTTP).
+# Deploy as Web Service so Render sets PORT (e.g. 10000). The server binds to 0.0.0.0:PORT.
+services:
+  - type: web
+    name: klyr-signaling
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm run signaling
+    # Render injects PORT automatically for web services; server reads process.env.PORT and binds to 0.0.0.0

@@ -41,13 +41,34 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--k-text, var(--foreground));
+  background-color: var(--k-bg-base, var(--background));
+  background-image: var(--k-bg-gradient);
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
-  /* Safe area for notched devices (when viewport-fit: cover) */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* App shell (e.g. grid wrapper) — use theme background; bottom padding for floating dock */
+.klyr-app-shell {
+  background-color: var(--k-bg-base, var(--background));
+  background-image: var(--k-bg-gradient);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.klyr-app-shell .klyr-grid-content {
+  padding-bottom: 5rem;
+}
+
+.klyr-grid-inner {
+  background: var(--k-grid-inner-bg, rgba(255, 255, 255, 0.6));
+  border-color: var(--k-grid-inner-border, rgba(0, 0, 0, 0.06));
+}
+
+/* Tile inner headers — use --k-surface-strong for glass themes */
+[data-theme]:not([data-theme="classic"]) .tile-header {
+  background: var(--k-surface-strong) !important;
+  border-color: var(--k-border) !important;
 }
 
 /* Improve touch targets and reduce accidental zoom on inputs (iOS) */
@@ -251,25 +272,28 @@ html, body {
   }
 }
 
-.tile-container .tile-surface {
-  border-radius: 0.5rem;
-  border: var(--border-subtle);
-  box-shadow: var(--shadow-tile);
-  background: var(--color-bg);
-  transition: box-shadow var(--motion-duration) var(--motion-ease),
-    transform var(--motion-duration) var(--motion-ease),
-    border-color var(--motion-duration) var(--motion-ease);
+.tile-container .tile-surface,
+.tile-container .klyr-surface {
+  border-radius: var(--k-radius, 0.5rem);
+  border: 1px solid var(--k-border, rgba(0, 0, 0, 0.06));
+  box-shadow: var(--k-shadow, var(--shadow-tile));
+  background: var(--k-surface, var(--color-bg));
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  backdrop-filter: blur(var(--k-blur, 0px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--k-blur, 0px)) saturate(1.2);
 }
 
 @media (prefers-color-scheme: dark) {
-  .tile-container .tile-surface {
-    border: var(--border-subtle-dark);
-    background: rgb(30 41 59);
+  .tile-container .tile-surface,
+  .tile-container .klyr-surface {
+    border-color: var(--k-border, rgba(255, 255, 255, 0.08));
+    background: var(--k-surface, rgb(30 41 59));
   }
 }
 
-.tile-container:hover .tile-surface {
-  box-shadow: var(--shadow-tile-hover);
+.tile-container:hover .tile-surface,
+.tile-container:hover .klyr-surface {
+  box-shadow: var(--k-shadow-hover, var(--shadow-tile-hover));
   transform: translateY(-1px);
 }
 
@@ -282,11 +306,13 @@ html, body {
   pointer-events: none;
 }
 
-.tile-container.tile-primary .tile-surface {
-  box-shadow: var(--shadow-tile-hover), 0 0 0 1px rgba(59, 130, 246, 0.15);
+.tile-container.tile-primary .tile-surface,
+.tile-container.tile-primary .klyr-surface {
+  box-shadow: var(--k-shadow-hover, var(--shadow-tile-hover)), 0 0 0 1px rgba(59, 130, 246, 0.15);
 }
 
-.tile-container.tile-primary .tile-surface::before {
+.tile-container.tile-primary .tile-surface::before,
+.tile-container.tile-primary .klyr-surface::before {
   content: "";
   position: absolute;
   top: 0;
@@ -294,15 +320,17 @@ html, body {
   right: 0;
   height: 2px;
   background: var(--color-primary);
-  border-radius: 0.5rem 0.5rem 0 0;
+  border-radius: var(--k-radius, 0.5rem) var(--k-radius, 0.5rem) 0 0;
   pointer-events: none;
 }
 
 /* Active tile (focused) — subtle shadow + thin top accent */
-.tile-container.tile-active .tile-surface {
-  box-shadow: var(--shadow-tile-active);
+.tile-container.tile-active .tile-surface,
+.tile-container.tile-active .klyr-surface {
+  box-shadow: var(--k-shadow-active, var(--shadow-tile-active));
 }
-.tile-container.tile-active .tile-surface::after {
+.tile-container.tile-active .tile-surface::after,
+.tile-container.tile-active .klyr-surface::after {
   content: "";
   position: absolute;
   top: 0;
@@ -311,11 +339,12 @@ html, body {
   height: 1px;
   background: var(--color-primary);
   opacity: 0.6;
-  border-radius: 0.5rem 0.5rem 0 0;
+  border-radius: var(--k-radius, 0.5rem) var(--k-radius, 0.5rem) 0 0;
   pointer-events: none;
 }
 
-.tile-container .tile-surface {
+.tile-container .tile-surface,
+.tile-container .klyr-surface {
   position: relative;
 }
 
@@ -369,11 +398,22 @@ html, body {
   animation: flux-shimmer 2s var(--motion-ease) infinite;
 }
 
-/* Dock */
+/* Dock — floating glass pill; theme tokens from themes.css */
 .klyr-dock {
-  box-shadow: var(--shadow-dock);
+  background: var(--k-dock-surface, rgba(255, 255, 255, 0.8));
+  border: 1px solid var(--k-dock-border, rgba(0, 0, 0, 0.06));
+  border-radius: 9999px;
+  box-shadow: var(--k-shadow, var(--shadow-dock));
+  backdrop-filter: blur(var(--k-blur, 0px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--k-blur, 0px)) saturate(1.2);
   transition: opacity var(--motion-duration) var(--motion-ease),
     transform var(--motion-duration) var(--motion-ease);
+}
+@media (prefers-color-scheme: dark) {
+  .klyr-dock {
+    background: var(--k-dock-surface, rgba(15, 23, 42, 0.8));
+    border-color: var(--k-dock-border, rgba(255, 255, 255, 0.1));
+  }
 }
 
 /* Call overlay — dark theme for video UI */

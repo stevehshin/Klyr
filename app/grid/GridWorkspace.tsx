@@ -11,6 +11,9 @@ import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import { SettingsModal } from "@/components/SettingsModal";
 import { Dock } from "@/components/Dock";
 import { FluxPanel } from "@/components/FluxPanel";
+import { LensPanel } from "@/components/LensPanel";
+import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { QuickJotModal } from "@/components/QuickJotModal";
 import { CreateChannelModal } from "@/components/CreateChannelModal";
 import { CreateChannelGroupModal } from "@/components/CreateChannelGroupModal";
 import { ManageChannelGroupModal } from "@/components/ManageChannelGroupModal";
@@ -125,6 +128,9 @@ export function GridWorkspace({
   const [dmTiles, setDmTiles] = useState<{ id: string; conversationId: string | null; conversationName: string; onGrid: boolean; gridId: string }[]>([]);
   const [focusMode, setFocusMode] = useState(false);
   const [fluxOpen, setFluxOpen] = useState(false);
+  const [lensOpen, setLensOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [quickJotOpen, setQuickJotOpen] = useState(false);
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
   const [joinedLoopRoom, setJoinedLoopRoom] = useState<{ tileId: string; roomLabel: string } | null>(null);
   const [loopBarMuted, setLoopBarMuted] = useState(false);
@@ -366,6 +372,7 @@ export function GridWorkspace({
       const res = await fetch("/api/tiles/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           gridId: currentGrid.id,
           type: "dm",
@@ -702,9 +709,9 @@ export function GridWorkspace({
               joinedLoopRoom={joinedLoopRoom}
               loopBarMuted={loopBarMuted}
               onOpenFlux={() => setFluxOpen(true)}
-              onOpenLens={() => {}}
-              onOpenNotifications={() => {}}
-              onOpenQuickJot={() => {}}
+              onOpenLens={() => setLensOpen(true)}
+              onOpenNotifications={() => setNotificationsOpen(true)}
+              onOpenQuickJot={() => setQuickJotOpen(true)}
               onOpenSettings={() => setShowSettings(true)}
             />
             {fluxOpen && (
@@ -716,6 +723,34 @@ export function GridWorkspace({
                   setFluxOpen(false);
                   setShowSettings(true);
                 }}
+              />
+            )}
+            {lensOpen && (
+              <LensPanel
+                gridName={currentGrid.name}
+                tiles={currentGrid.tiles}
+                onClose={() => setLensOpen(false)}
+                onFocusTile={(tileId) => {
+                  window.dispatchEvent(new CustomEvent("klyr-focus-tile", { detail: { tileId } }));
+                  setLensOpen(false);
+                }}
+              />
+            )}
+            {notificationsOpen && (
+              <NotificationsPanel
+                onClose={() => setNotificationsOpen(false)}
+                onOpenSettings={() => {
+                  setNotificationsOpen(false);
+                  setShowSettings(true);
+                }}
+              />
+            )}
+            {quickJotOpen && (
+              <QuickJotModal
+                gridId={currentGrid.id}
+                tiles={currentGrid.tiles}
+                onClose={() => setQuickJotOpen(false)}
+                onAdded={() => router.refresh()}
               />
             )}
           </ActiveTileProvider>

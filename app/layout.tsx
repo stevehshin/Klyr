@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "@/styles/themes.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="classic" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#2563EB" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

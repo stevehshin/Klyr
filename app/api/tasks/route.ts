@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
     }
     const sql = neon(dbUrl);
     const rows = await sql`
-      INSERT INTO "Task" (id, "gridId", "projectId", title, description, status, priority, "dueAt", "assigneeUserId", "createdByUserId", visibility, "calendarEventId")
-      VALUES (gen_random_uuid()::text, ${gridId}, ${projId}, ${title.trim()}, ${desc}, ${st}, ${pri}, ${due?.toISOString() ?? null}, ${assignee}, ${session.userId}, ${vis}, ${calEvId})
+      INSERT INTO "Task" (id, "gridId", "projectId", title, description, status, priority, "dueAt", "assigneeUserId", "createdByUserId", visibility, "calendarEventId", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid()::text, ${gridId}, ${projId}, ${title.trim()}, ${desc}, ${st}, ${pri}, ${due?.toISOString() ?? null}, ${assignee}, ${session.userId}, ${vis}, ${calEvId}, NOW(), NOW())
       RETURNING id, "gridId", "projectId", title, description, status, priority, "dueAt", "assigneeUserId", "createdByUserId", visibility, "calendarEventId", "createdAt", "updatedAt"
     `;
     const taskRow = Array.isArray(rows) ? rows[0] : (rows as { rows?: unknown[] })?.rows?.[0];

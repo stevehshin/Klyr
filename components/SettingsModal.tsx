@@ -6,6 +6,9 @@ import {
   setStoredOpenAIKey,
   getNotificationsEnabled,
   setNotificationsEnabled,
+  getNotificationPrefs,
+  setNotificationPrefs,
+  type NotificationPrefs,
 } from "@/lib/settings";
 import { UserAvatar } from "./UserAvatar";
 
@@ -27,6 +30,11 @@ interface ProfileData {
 export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: SettingsModalProps) {
   const [openaiKey, setOpenaiKey] = useState("");
   const [notificationsEnabled, setNotificationsEnabledState] = useState(false);
+  const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>({
+    dm: true,
+    mentions: true,
+    channelActivity: false,
+  });
   const [openaiKeySaved, setOpenaiKeySaved] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -41,6 +49,7 @@ export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: S
   useEffect(() => {
     setOpenaiKey(getStoredOpenAIKey() ?? "");
     setNotificationsEnabledState(getNotificationsEnabled());
+    setNotificationPrefsState(getNotificationPrefs());
   }, []);
 
   useEffect(() => {
@@ -280,12 +289,12 @@ export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: S
             </button>
           </section>
 
-          {/* Notifications */}
+          {/* Notification preference center */}
           <section>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Notifications
+              Notification preferences
             </h3>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer mb-3">
               <input
                 type="checkbox"
                 checked={notificationsEnabled}
@@ -296,9 +305,53 @@ export function SettingsModal({ onClose, onOpenThemeCustomizer, userIsAdmin }: S
                 Enable browser notifications
               </span>
             </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Allow Klyr to show desktop notifications (e.g. new messages). You may need to allow notifications in your browser.
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Allow Klyr to show desktop notifications. You may need to allow notifications in your browser.
             </p>
+            <div className="space-y-2 pl-1 border-l-2 border-gray-200 dark:border-gray-600">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                Notify me for:
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.dm}
+                  onChange={() => {
+                    const next = { ...notificationPrefs, dm: !notificationPrefs.dm };
+                    setNotificationPrefsState(next);
+                    setNotificationPrefs(next);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Direct messages</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.mentions}
+                  onChange={() => {
+                    const next = { ...notificationPrefs, mentions: !notificationPrefs.mentions };
+                    setNotificationPrefsState(next);
+                    setNotificationPrefs(next);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Mentions</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.channelActivity}
+                  onChange={() => {
+                    const next = { ...notificationPrefs, channelActivity: !notificationPrefs.channelActivity };
+                    setNotificationPrefsState(next);
+                    setNotificationPrefs(next);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Channel activity</span>
+              </label>
+            </div>
           </section>
 
           {/* Admin */}
